@@ -22,6 +22,7 @@ Desenvolver um componente para aplicações web que permita a criação, visuali
 
 ## 🧱 Estrutura do Projeto
 
+```
 gestor-workflow/
 │
 ├── docs/                        # Documentação do projeto
@@ -44,7 +45,7 @@ gestor-workflow/
 ├── .gitignore                   # Ignorar ficheiros desnecessários
 ├── README.md                    # Explicação geral do projeto
 └── LICENSE                      # Licença de uso (ex: MIT)
-
+```
 
 ## 🛠️ Tecnologias
 
