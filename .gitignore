@@ -1,0 +1,23 @@
+# Dependências
+**/node_modules/
+**/bin/
+**/obj/
+**/.npm
+
+# Ambiente
+.env
+*.local
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db

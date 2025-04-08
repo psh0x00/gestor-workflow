@@ -1,0 +1,6 @@
+@GestorWorkflow.API_HostAddress = http://localhost:5148
+
+GET {{GestorWorkflow.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
