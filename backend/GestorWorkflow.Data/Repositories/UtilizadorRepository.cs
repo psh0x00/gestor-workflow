@@ -3,6 +3,7 @@ using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace GestorWorkflow.Data.Repositories;
 
@@ -13,12 +14,12 @@ public class UtilizadorRepository : BaseRepository<Utilizador>, IUtilizadorRepos
     public UtilizadorRepository(GestorWorkflowDbContext context, IMapper<UtilizadorEntity, Utilizador> mapper)
         : base(context)
     {
-        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _mapper = mapper;
     }
 
     public async Task<UtilizadorEntity?> ObterPorIdAsync(int id)
     {
-        var utilizador = await _context.Utilizadores
+        var utilizador = await _dbSet
             .Include(u => u.UtilizadorPermissoes)
             .FirstOrDefaultAsync(u => u.UtilizadorId == id);
 
@@ -27,7 +28,7 @@ public class UtilizadorRepository : BaseRepository<Utilizador>, IUtilizadorRepos
 
     public async Task<IEnumerable<UtilizadorEntity>> ObterTodosAsync()
     {
-        var utilizadores = await _context.Utilizadores
+        var utilizadores = await _dbSet
             .Include(u => u.UtilizadorPermissoes)
             .ToListAsync();
 
@@ -36,7 +37,7 @@ public class UtilizadorRepository : BaseRepository<Utilizador>, IUtilizadorRepos
 
     public async Task<IEnumerable<UtilizadorEntity>> ObterPorFuncaoAsync(string funcao)
     {
-        var utilizadores = await _context.Utilizadores
+        var utilizadores = await _dbSet
             .Include(u => u.UtilizadorPermissoes)
             .Where(u => u.Funcao == funcao)
             .ToListAsync();
@@ -46,7 +47,7 @@ public class UtilizadorRepository : BaseRepository<Utilizador>, IUtilizadorRepos
 
     public async Task<IEnumerable<UtilizadorEntity>> ObterComPermissaoAsync(int permissaoId)
     {
-        var utilizadores = await _context.Utilizadores
+        var utilizadores = await _dbSet
             .Include(u => u.UtilizadorPermissoes)
             .Where(u => u.UtilizadorPermissoes.Any(up => up.PermissaoId == permissaoId))
             .ToListAsync();
@@ -57,55 +58,56 @@ public class UtilizadorRepository : BaseRepository<Utilizador>, IUtilizadorRepos
     public async Task<UtilizadorEntity> CriarAsync(UtilizadorEntity utilizadorEntity)
     {
         var utilizador = _mapper.MapToDataModel(utilizadorEntity);
-        await _context.Utilizadores.AddAsync(utilizador);
+        var createdUtilizador = await CreateAsync(utilizador);
 
         // Adicionar permissões
         foreach (var permissaoId in utilizadorEntity.PermissoesIds)
         {
             _context.UtilizadorPermissoes.Add(new UtilizadorPermissao
             {
-                UtilizadorId = utilizador.UtilizadorId,
+                UtilizadorId = createdUtilizador.UtilizadorId,
                 PermissaoId = permissaoId
             });
         }
 
-        return _mapper.MapToDomain(utilizador);
+        await _context.SaveChangesAsync();
+        return _mapper.MapToDomain(createdUtilizador);
     }
 
     public async Task<UtilizadorEntity> AtualizarAsync(UtilizadorEntity utilizadorEntity)
     {
-        var utilizador = await _context.Utilizadores
+        var existingUtilizador = await _dbSet
             .Include(u => u.UtilizadorPermissoes)
             .FirstOrDefaultAsync(u => u.UtilizadorId == utilizadorEntity.Id);
 
-        if (utilizador == null)
-            throw new ArgumentException("Utilizador não encontrado", nameof(utilizadorEntity));
+        if (existingUtilizador == null)
+            throw new InvalidOperationException($"Utilizador with ID {utilizadorEntity.Id} not found.");
 
-        _mapper.MapToExistingDataModel(utilizadorEntity, utilizador);
+        _mapper.MapToExistingDataModel(utilizadorEntity, existingUtilizador);
 
         // Atualizar permissões
-        var permissoesAtuais = utilizador.UtilizadorPermissoes.ToList();
+        var permissoesAtuais = existingUtilizador.UtilizadorPermissoes.ToList();
         var permissoesParaRemover = permissoesAtuais.Where(up => !utilizadorEntity.PermissoesIds.Contains(up.PermissaoId));
         var permissoesParaAdicionar = utilizadorEntity.PermissoesIds
             .Where(id => !permissoesAtuais.Any(up => up.PermissaoId == id))
-            .Select(id => new UtilizadorPermissao { UtilizadorId = utilizador.UtilizadorId, PermissaoId = id });
+            .Select(id => new UtilizadorPermissao { UtilizadorId = existingUtilizador.UtilizadorId, PermissaoId = id });
 
         _context.UtilizadorPermissoes.RemoveRange(permissoesParaRemover);
         await _context.UtilizadorPermissoes.AddRangeAsync(permissoesParaAdicionar);
 
-        _context.Utilizadores.Update(utilizador);
-        return _mapper.MapToDomain(utilizador);
+        var updatedUtilizador = Update(existingUtilizador);
+        await _context.SaveChangesAsync();
+        return _mapper.MapToDomain(updatedUtilizador);
     }
 
     public async Task<bool> ExisteAsync(int id)
     {
-        return await _context.Utilizadores
-            .AnyAsync(u => u.UtilizadorId == id);
+        return await _dbSet.AnyAsync(u => u.UtilizadorId == id);
     }
 
     public async Task<bool> ExisteNomeAsync(string nome, int? excludeId = null)
     {
-        var query = _context.Utilizadores.Where(u => u.Nome == nome);
+        var query = _dbSet.Where(u => u.Nome == nome);
 
         if (excludeId.HasValue)
             query = query.Where(u => u.UtilizadorId != excludeId.Value);
@@ -115,14 +117,15 @@ public class UtilizadorRepository : BaseRepository<Utilizador>, IUtilizadorRepos
 
     public async Task RemoverAsync(int id)
     {
-        var utilizador = await _context.Utilizadores
+        var utilizador = await _dbSet
             .Include(u => u.UtilizadorPermissoes)
             .FirstOrDefaultAsync(u => u.UtilizadorId == id);
 
         if (utilizador != null)
         {
             _context.UtilizadorPermissoes.RemoveRange(utilizador.UtilizadorPermissoes);
-            _context.Utilizadores.Remove(utilizador);
+            Delete(utilizador);
+            await _context.SaveChangesAsync();
         }
     }
 }

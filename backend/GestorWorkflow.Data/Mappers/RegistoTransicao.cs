@@ -4,7 +4,7 @@ using GestorWorkflow.Data.Models;
 
 namespace GestorWorkflow.Data.Mappers
 {
-    public class RegistroTransicaoMapper : IMapper<RegistoTransicaoEntity, TransicaoInstancia>
+    public class RegistoTransicaoMapper : IMapper<RegistoTransicaoEntity, TransicaoInstancia>
     {
         public RegistoTransicaoEntity MapToDomain(TransicaoInstancia dataModel)
         {
@@ -35,7 +35,6 @@ namespace GestorWorkflow.Data.Mappers
 
             return new TransicaoInstancia
             {
-                TransicaoModeloId = domainModel.TransicaoId,
                 DataExecucao = domainModel.DataExecucao,
                 ExecutadoPorUtilizadorId = domainModel.ExecutadoPorId,
                 Sucesso = domainModel.Sucesso,

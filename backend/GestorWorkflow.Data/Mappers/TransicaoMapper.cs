@@ -1,11 +1,26 @@
 using GestorWorkflow.Core.Entities;
 using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Models;
+using System;
 
 namespace GestorWorkflow.Data.Mappers
 {
     public class TransicaoMapper : IMapper<TransicaoEntity, TransicaoModelo>
     {
+        private readonly IMapper<PermissaoEntity, Permissao> _permissaoMapper;
+        private readonly IMapper<PreCondicaoEntity, PreCondicao> _preCondicaoMapper;
+        private readonly IMapper<PosCondicaoEntity, PosCondicao> _posCondicaoMapper;
+
+        public TransicaoMapper(
+            IMapper<PermissaoEntity, Permissao> permissaoMapper,
+            IMapper<PreCondicaoEntity, PreCondicao> preCondicaoMapper,
+            IMapper<PosCondicaoEntity, PosCondicao> posCondicaoMapper)
+        {
+            _permissaoMapper = permissaoMapper;
+            _preCondicaoMapper = preCondicaoMapper;
+            _posCondicaoMapper = posCondicaoMapper;
+        }
+
         public TransicaoEntity MapToDomain(TransicaoModelo dataModel)
         {
             if (dataModel == null) return null;
@@ -52,8 +67,8 @@ namespace GestorWorkflow.Data.Mappers
 
             return new TransicaoModelo
             {
-                TransicaoModeloId = domainModel.Id,
-                Nome = domainModel.Nome,
+                // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
+                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Descricao = domainModel.Descricao,
                 EstadoOrigemId = domainModel.EstadoOrigemId,
                 EstadoDestinoId = domainModel.EstadoDestinoId,
@@ -66,7 +81,7 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null || existingDataModel == null) return;
 
-            existingDataModel.Nome = domainModel.Nome;
+            existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             existingDataModel.Descricao = domainModel.Descricao;
             existingDataModel.EstadoOrigemId = domainModel.EstadoOrigemId;
             existingDataModel.EstadoDestinoId = domainModel.EstadoDestinoId;

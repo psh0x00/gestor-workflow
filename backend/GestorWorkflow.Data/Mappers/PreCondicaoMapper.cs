@@ -1,6 +1,7 @@
 using GestorWorkflow.Core.Entities;
 using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Models;
+using System;
 
 namespace GestorWorkflow.Data.Mappers
 {
@@ -39,8 +40,8 @@ namespace GestorWorkflow.Data.Mappers
 
             return new PreCondicao
             {
-                PreCondicaoId = domainModel.Id,
-                Nome = domainModel.Nome,
+                // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
+                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Descricao = domainModel.Descricao,
                 CondicaoSql = domainModel.CondicaoSql,
                 Ativo = domainModel.Ativo,
@@ -53,7 +54,7 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null || existingDataModel == null) return;
 
-            existingDataModel.Nome = domainModel.Nome;
+            existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             existingDataModel.Descricao = domainModel.Descricao;
             existingDataModel.CondicaoSql = domainModel.CondicaoSql;
             existingDataModel.Ativo = domainModel.Ativo;

@@ -4,6 +4,7 @@ using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace GestorWorkflow.Data.Repositories;
 
@@ -28,15 +29,22 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<IEnumerable<WorkflowInstanciaEntity>> GetWorkflowsEmAndamentoAsync()
     {
-        var workflows = await _context.WorkflowInstancias
-            .Where(w => w.StatusWorkflowEntity == StatusWorkflowEntity.Ativo)
-            .Include(w => w.WorkflowModelo)
-            .Include(w => w.EstadoAtual)
-            .Include(w => w.IniciadoPor)
-            .AsNoTracking()
-            .ToListAsync();
+        try
+        {
+            var workflows = await _context.WorkflowInstancias
+                .Where(w => w.StatusWorkflowEntity == StatusWorkflowEntity.Ativo)
+                .Include(w => w.WorkflowModelo)
+                .Include(w => w.EstadoAtual)
+                .Include(w => w.IniciadoPor)
+                .AsNoTracking()
+                .ToListAsync();
 
-        return workflows.Select(_mapper.MapToDomain);
+            return workflows.Select(_mapper.MapToDomain);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error retrieving active workflows", ex);
+        }
     }
 
     /// <summary>
@@ -44,24 +52,34 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<IEnumerable<RegistoTransicaoEntity>> GetEstatisticasTransicoesAsync(DateTime dataInicio, DateTime dataFim)
     {
-        var transicoes = await _context.WorkflowInstancias
-            .Include(w => w.TransicoesInstancia)
-                .ThenInclude(t => t.TransicaoModelo)
-            .Include(w => w.TransicoesInstancia)
-                .ThenInclude(t => t.ExecutadoPor)
-            .Where(w => w.TransicoesInstancia.Any(t => t.DataExecucao >= dataInicio && t.DataExecucao <= dataFim))
-            .SelectMany(w => w.TransicoesInstancia)
-            .Where(t => t.DataExecucao >= dataInicio && t.DataExecucao <= dataFim)
-            .AsNoTracking()
-            .ToListAsync();
+        try
+        {
+            if (dataInicio > dataFim)
+                throw new ArgumentException("Start date must be before end date");
 
-        return transicoes.Select(t => new RegistoTransicaoEntity(
-            t.TransicaoModeloId,
-            t.TransicaoModelo?.EstadoOrigemId,
-            t.TransicaoModelo?.EstadoDestinoId ?? 0,
-            t.DataExecucao,
-            t.ExecutadoPorUtilizadorId
-        ));
+            var transicoes = await _context.WorkflowInstancias
+                .Include(w => w.TransicoesInstancia)
+                    .ThenInclude(t => t.TransicaoModelo)
+                .Include(w => w.TransicoesInstancia)
+                    .ThenInclude(t => t.ExecutadoPor)
+                .Where(w => w.TransicoesInstancia.Any(t => t.DataExecucao >= dataInicio && t.DataExecucao <= dataFim))
+                .SelectMany(w => w.TransicoesInstancia)
+                .Where(t => t.DataExecucao >= dataInicio && t.DataExecucao <= dataFim)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return transicoes.Select(t => new RegistoTransicaoEntity(
+                t.TransicaoModeloId,
+                t.TransicaoModelo?.EstadoOrigemId,
+                t.TransicaoModelo?.EstadoDestinoId ?? 0,
+                t.DataExecucao,
+                t.ExecutadoPorUtilizadorId
+            ));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error retrieving transition statistics", ex);
+        }
     }
 
     /// <summary>
@@ -69,16 +87,23 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<Dictionary<string, int>> GetEstatisticasPorEstadoAsync(int workflowModeloId)
     {
-        var instancias = await _context.WorkflowInstancias
-            .Where(w => w.WorkflowModeloId == workflowModeloId)
-            .Include(w => w.EstadoAtual)
-            .AsNoTracking()
-            .ToListAsync();
+        try
+        {
+            var instancias = await _context.WorkflowInstancias
+                .Where(w => w.WorkflowModeloId == workflowModeloId)
+                .Include(w => w.EstadoAtual)
+                .AsNoTracking()
+                .ToListAsync();
 
-        return instancias
-            .Where(w => w.EstadoAtualId.HasValue)
-            .GroupBy(w => w.EstadoAtual?.Nome ?? "Desconhecido")
-            .ToDictionary(g => g.Key, g => g.Count());
+            return instancias
+                .Where(w => w.EstadoAtualId.HasValue)
+                .GroupBy(w => w.EstadoAtual?.Nome ?? "Desconhecido")
+                .ToDictionary(g => g.Key, g => g.Count());
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Error retrieving statistics for workflow model {workflowModeloId}", ex);
+        }
     }
 
     /// <summary>
@@ -86,17 +111,24 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<IEnumerable<WorkflowInstanciaEntity>> GetWorkflowsAtrasadosAsync(TimeSpan tempoLimite)
     {
-        var dataLimite = DateTime.UtcNow.Subtract(tempoLimite);
+        try
+        {
+            var dataLimite = DateTime.UtcNow.Subtract(tempoLimite);
 
-        var workflows = await _context.WorkflowInstancias
-            .Where(w => w.StatusWorkflowEntity == StatusWorkflowEntity.Ativo && w.DataInicio <= dataLimite)
-            .Include(w => w.WorkflowModelo)
-            .Include(w => w.EstadoAtual)
-            .Include(w => w.IniciadoPor)
-            .AsNoTracking()
-            .ToListAsync();
+            var workflows = await _context.WorkflowInstancias
+                .Where(w => w.StatusWorkflowEntity == StatusWorkflowEntity.Ativo && w.DataInicio <= dataLimite)
+                .Include(w => w.WorkflowModelo)
+                .Include(w => w.EstadoAtual)
+                .Include(w => w.IniciadoPor)
+                .AsNoTracking()
+                .ToListAsync();
 
-        return workflows.Select(_mapper.MapToDomain);
+            return workflows.Select(_mapper.MapToDomain);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error retrieving delayed workflows", ex);
+        }
     }
 
     /// <summary>
@@ -104,32 +136,45 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<IEnumerable<UtilizadorEntity>> GetUtilizadoresMaisAtivosAsync(DateTime dataInicio, DateTime dataFim, int limite = 10)
     {
-        var utilizadoresAtivos = await _context.WorkflowInstancias
-            .Include(w => w.TransicoesInstancia)
-            .Where(w => w.TransicoesInstancia.Any(t => 
-                t.DataExecucao >= dataInicio && 
-                t.DataExecucao <= dataFim && 
-                t.ExecutadoPorUtilizadorId.HasValue))
-            .SelectMany(w => w.TransicoesInstancia)
-            .Where(t => t.DataExecucao >= dataInicio && 
-                       t.DataExecucao <= dataFim && 
-                       t.ExecutadoPorUtilizadorId.HasValue)
-            .GroupBy(t => t.ExecutadoPorUtilizadorId)
-            .OrderByDescending(g => g.Count())
-            .Take(limite)
-            .Select(g => g.Key)
-            .ToListAsync();
+        try
+        {
+            if (dataInicio > dataFim)
+                throw new ArgumentException("Start date must be before end date");
 
-        var utilizadores = await _context.Utilizadores
-            .Where(u => utilizadoresAtivos.Contains(u.UtilizadorId))
-            .AsNoTracking()
-            .ToListAsync();
+            if (limite <= 0)
+                throw new ArgumentException("Limit must be greater than zero");
 
-        return utilizadores.Select(u => new UtilizadorEntity(
-            u.UtilizadorId,
-            u.Nome,
-            u.Funcao
-        ));
+            var utilizadoresAtivos = await _context.WorkflowInstancias
+                .Include(w => w.TransicoesInstancia)
+                .Where(w => w.TransicoesInstancia.Any(t => 
+                    t.DataExecucao >= dataInicio && 
+                    t.DataExecucao <= dataFim && 
+                    t.ExecutadoPorUtilizadorId.HasValue))
+                .SelectMany(w => w.TransicoesInstancia)
+                .Where(t => t.DataExecucao >= dataInicio && 
+                           t.DataExecucao <= dataFim && 
+                           t.ExecutadoPorUtilizadorId.HasValue)
+                .GroupBy(t => t.ExecutadoPorUtilizadorId)
+                .OrderByDescending(g => g.Count())
+                .Take(limite)
+                .Select(g => g.Key)
+                .ToListAsync();
+
+            var utilizadores = await _context.Utilizadores
+                .Where(u => utilizadoresAtivos.Contains(u.UtilizadorId))
+                .AsNoTracking()
+                .ToListAsync();
+
+            return utilizadores.Select(u => new UtilizadorEntity(
+                u.UtilizadorId,
+                u.Nome,
+                u.Funcao
+            ));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error retrieving most active users", ex);
+        }
     }
 
     /// <summary>
@@ -137,16 +182,23 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<decimal> GetTaxaSucessoWorkflowAsync(int workflowModeloId)
     {
-        var totalInstancias = await _context.WorkflowInstancias
-            .CountAsync(w => w.WorkflowModeloId == workflowModeloId);
+        try
+        {
+            var totalInstancias = await _context.WorkflowInstancias
+                .CountAsync(w => w.WorkflowModeloId == workflowModeloId);
 
-        if (totalInstancias == 0) return 0;
+            if (totalInstancias == 0) return 0;
 
-        var instanciasConcluidas = await _context.WorkflowInstancias
-            .CountAsync(w => w.WorkflowModeloId == workflowModeloId && 
-                           w.StatusWorkflowEntity == StatusWorkflowEntity.Concluido);
+            var instanciasConcluidas = await _context.WorkflowInstancias
+                .CountAsync(w => w.WorkflowModeloId == workflowModeloId && 
+                               w.StatusWorkflowEntity == StatusWorkflowEntity.Concluido);
 
-        return (decimal)instanciasConcluidas / totalInstancias * 100;
+            return (decimal)instanciasConcluidas / totalInstancias * 100;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Error calculating success rate for workflow model {workflowModeloId}", ex);
+        }
     }
 
     /// <summary>
@@ -154,21 +206,28 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
     /// </summary>
     public async Task<TimeSpan> GetTempoMedioConclusaoAsync(int workflowModeloId)
     {
-        var instanciasConcluidas = await _context.WorkflowInstancias
-            .Where(w => w.WorkflowModeloId == workflowModeloId &&
-                       w.StatusWorkflowEntity == StatusWorkflowEntity.Concluido &&
-                       w.DataFim.HasValue)
-            .Select(w => new { w.DataInicio, w.DataFim })
-            .AsNoTracking()
-            .ToListAsync();
+        try
+        {
+            var instanciasConcluidas = await _context.WorkflowInstancias
+                .Where(w => w.WorkflowModeloId == workflowModeloId &&
+                           w.StatusWorkflowEntity == StatusWorkflowEntity.Concluido &&
+                           w.DataFim.HasValue)
+                .Select(w => new { w.DataInicio, w.DataFim })
+                .AsNoTracking()
+                .ToListAsync();
 
-        if (!instanciasConcluidas.Any()) return TimeSpan.Zero;
+            if (!instanciasConcluidas.Any()) return TimeSpan.Zero;
 
-        var temposTotais = instanciasConcluidas
-            .Select(i => i.DataFim!.Value - i.DataInicio)
-            .ToList();
+            var temposTotais = instanciasConcluidas
+                .Select(i => i.DataFim!.Value - i.DataInicio)
+                .ToList();
 
-        var ticksMedias = (long)temposTotais.Average(t => t.Ticks);
-        return new TimeSpan(ticksMedias);
+            var ticksMedias = (long)temposTotais.Average(t => t.Ticks);
+            return new TimeSpan(ticksMedias);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Error calculating average completion time for workflow model {workflowModeloId}", ex);
+        }
     }
 }

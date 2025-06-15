@@ -33,8 +33,8 @@ namespace GestorWorkflow.Data.Mappers
 
             return new Permissao
             {
-                PermissaoId = domainModel.Id,
-                Nome = domainModel.Nome,
+                // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
+                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Descricao = domainModel.Descricao,
                 TransicaoModeloId = domainModel.TransicaoId
             };
@@ -44,7 +44,7 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null || existingDataModel == null) return;
 
-            existingDataModel.Nome = domainModel.Nome;
+            existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             existingDataModel.Descricao = domainModel.Descricao;
             existingDataModel.TransicaoModeloId = domainModel.TransicaoId;
         }

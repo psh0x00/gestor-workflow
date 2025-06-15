@@ -78,10 +78,11 @@ public class WorkflowModeloService : IWorkflowModeloService
                 throw new WorkflowModeloNaoEncontradoException(id);
 
             // Verificar se o novo nome já existe em outro workflow
-            if (dto.Nome != workflow.Nome && await _unitOfWork.WorkflowModelos.ExisteNomeAsync(dto.Nome))
-                throw new WorkflowModeloNomeJaExisteException(dto.Nome);
+            if (!string.IsNullOrEmpty(dto.Nome) && dto.Nome != workflow.Nome && await _unitOfWork.WorkflowModelos.ExisteNomeAsync(dto.Nome))
+                throw new WorkflowModeloNomeJaExisteException(dto.Nome!);
 
-            workflow.AtualizarNome(dto.Nome);
+            if (!string.IsNullOrEmpty(dto.Nome))
+                workflow.AtualizarNome(dto.Nome!);
             if (!string.IsNullOrEmpty(dto.Descricao))
                 workflow.AtualizarDescricao(dto.Descricao);
 

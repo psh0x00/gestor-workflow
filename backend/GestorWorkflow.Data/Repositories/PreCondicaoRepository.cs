@@ -3,6 +3,7 @@ using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace GestorWorkflow.Data.Repositories;
 
@@ -13,12 +14,13 @@ public class PreCondicaoRepository : BaseRepository<PreCondicao>, IPreCondicaoRe
     public PreCondicaoRepository(GestorWorkflowDbContext context, IMapper<PreCondicaoEntity, PreCondicao> mapper) 
         : base(context)
     {
-        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _mapper = mapper;
     }
 
     public async Task<PreCondicaoEntity?> ObterPorIdAsync(int id)
     {
-        var preCondicao = await _context.PreCondicoes
+        var preCondicao = await _dbSet
+            .Include(p => p.CriadoPor)
             .FirstOrDefaultAsync(p => p.PreCondicaoId == id);
 
         return _mapper.MapToDomain(preCondicao);
@@ -26,7 +28,8 @@ public class PreCondicaoRepository : BaseRepository<PreCondicao>, IPreCondicaoRe
 
     public async Task<IEnumerable<PreCondicaoEntity>> ObterTodosAsync()
     {
-        var preCondicoes = await _context.PreCondicoes
+        var preCondicoes = await _dbSet
+            .Include(p => p.CriadoPor)
             .ToListAsync();
 
         return preCondicoes.Select(_mapper.MapToDomain);
@@ -34,7 +37,8 @@ public class PreCondicaoRepository : BaseRepository<PreCondicao>, IPreCondicaoRe
 
     public async Task<IEnumerable<PreCondicaoEntity>> ObterAtivosAsync()
     {
-        var preCondicoes = await _context.PreCondicoes
+        var preCondicoes = await _dbSet
+            .Include(p => p.CriadoPor)
             .Where(p => p.Ativo)
             .ToListAsync();
 
@@ -44,33 +48,29 @@ public class PreCondicaoRepository : BaseRepository<PreCondicao>, IPreCondicaoRe
     public async Task<PreCondicaoEntity> CriarAsync(PreCondicaoEntity preCondicaoEntity)
     {
         var preCondicao = _mapper.MapToDataModel(preCondicaoEntity);
-        await _context.PreCondicoes.AddAsync(preCondicao);
-        return _mapper.MapToDomain(preCondicao);
+        var createdPreCondicao = await CreateAsync(preCondicao);
+        return _mapper.MapToDomain(createdPreCondicao);
     }
 
     public async Task<PreCondicaoEntity> AtualizarAsync(PreCondicaoEntity preCondicaoEntity)
     {
-        var preCondicao = await _context.PreCondicoes
-            .FirstOrDefaultAsync(p => p.PreCondicaoId == preCondicaoEntity.Id);
+        var existingPreCondicao = await _dbSet.FindAsync(preCondicaoEntity.Id);
+        if (existingPreCondicao == null)
+            throw new InvalidOperationException($"PreCondicao with ID {preCondicaoEntity.Id} not found.");
 
-        if (preCondicao == null)
-            throw new ArgumentException("Pré-condição não encontrada", nameof(preCondicaoEntity));
-
-        _mapper.MapToExistingDataModel(preCondicaoEntity, preCondicao);
-        _context.PreCondicoes.Update(preCondicao);
-
-        return _mapper.MapToDomain(preCondicao);
+        _mapper.MapToExistingDataModel(preCondicaoEntity, existingPreCondicao);
+        var updatedPreCondicao = Update(existingPreCondicao);
+        return _mapper.MapToDomain(updatedPreCondicao);
     }
 
     public async Task<bool> ExisteAsync(int id)
     {
-        return await _context.PreCondicoes
-            .AnyAsync(p => p.PreCondicaoId == id);
+        return await _dbSet.AnyAsync(p => p.PreCondicaoId == id);
     }
 
     public async Task<bool> ExisteNomeAsync(string nome, int? excludeId = null)
     {
-        var query = _context.PreCondicoes.Where(p => p.Nome == nome);
+        var query = _dbSet.Where(p => p.Nome == nome);
 
         if (excludeId.HasValue)
             query = query.Where(p => p.PreCondicaoId != excludeId.Value);
@@ -80,12 +80,8 @@ public class PreCondicaoRepository : BaseRepository<PreCondicao>, IPreCondicaoRe
 
     public async Task RemoverAsync(int id)
     {
-        var preCondicao = await _context.PreCondicoes
-            .FirstOrDefaultAsync(p => p.PreCondicaoId == id);
-
+        var preCondicao = await _dbSet.FindAsync(id);
         if (preCondicao != null)
-        {
-            _context.PreCondicoes.Remove(preCondicao);
-        }
+            Delete(preCondicao);
     }
 }

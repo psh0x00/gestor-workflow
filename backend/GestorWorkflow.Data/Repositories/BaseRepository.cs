@@ -11,8 +11,8 @@ namespace GestorWorkflow.Data.Repositories
 
         protected BaseRepository(GestorWorkflowDbContext context)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-            _dbSet = _context.Set<TEntity>();
+            _context = context;
+            _dbSet = context.Set<TEntity>();
         }
 
         public virtual async Task<TEntity?> GetByIdAsync(int id)
@@ -75,51 +75,52 @@ namespace GestorWorkflow.Data.Repositories
 
         public virtual async Task<TEntity> CreateAsync(TEntity entity)
         {
-            if (entity == null)
-                throw new ArgumentNullException(nameof(entity));
-
-            await _dbSet.AddAsync(entity);
-            return entity;
+            try
+            {
+                await _dbSet.AddAsync(entity);
+                await _context.SaveChangesAsync();
+                return entity;
+            }
+            catch (DbUpdateException ex)
+            {
+                // Handle ID-related errors
+                throw new InvalidOperationException("Error creating entity. Check if ID is being set manually.", ex);
+            }
         }
 
         public virtual async Task<IEnumerable<TEntity>> CreateRangeAsync(IEnumerable<TEntity> entities)
         {
-            if (entities == null)
-                throw new ArgumentNullException(nameof(entities));
-
-            var entitiesList = entities.ToList();
-            await _dbSet.AddRangeAsync(entitiesList);
-            return entitiesList;
+            await _dbSet.AddRangeAsync(entities);
+            await _context.SaveChangesAsync();
+            return entities;
         }
 
         public virtual TEntity Update(TEntity entity)
         {
-            if (entity == null)
-                throw new ArgumentNullException(nameof(entity));
-
             _dbSet.Attach(entity);
             _context.Entry(entity).State = EntityState.Modified;
+            _context.SaveChanges();
             return entity;
         }
 
         public virtual void UpdateRange(IEnumerable<TEntity> entities)
         {
-            if (entities == null)
-                throw new ArgumentNullException(nameof(entities));
-
-            _dbSet.UpdateRange(entities);
+            _dbSet.AttachRange(entities);
+            foreach (var entity in entities)
+            {
+                _context.Entry(entity).State = EntityState.Modified;
+            }
+            _context.SaveChanges();
         }
 
         public virtual void Delete(TEntity entity)
         {
-            if (entity == null)
-                throw new ArgumentNullException(nameof(entity));
-
             if (_context.Entry(entity).State == EntityState.Detached)
             {
                 _dbSet.Attach(entity);
             }
             _dbSet.Remove(entity);
+            _context.SaveChanges();
         }
 
         public virtual void Delete(int id)
@@ -133,10 +134,8 @@ namespace GestorWorkflow.Data.Repositories
 
         public virtual void DeleteRange(IEnumerable<TEntity> entities)
         {
-            if (entities == null)
-                throw new ArgumentNullException(nameof(entities));
-
             _dbSet.RemoveRange(entities);
+            _context.SaveChanges();
         }
 
         public virtual async Task<bool> ExistsAsync(int id)
@@ -151,11 +150,12 @@ namespace GestorWorkflow.Data.Repositories
 
         public virtual async Task<int> CountAsync(Expression<Func<TEntity, bool>>? filter = null)
         {
+            IQueryable<TEntity> query = _dbSet;
             if (filter != null)
             {
-                return await _dbSet.CountAsync(filter);
+                query = query.Where(filter);
             }
-            return await _dbSet.CountAsync();
+            return await query.CountAsync();
         }
 
         protected virtual IQueryable<TEntity> ApplySpecification(IQueryable<TEntity> query, Expression<Func<TEntity, bool>>? filter)

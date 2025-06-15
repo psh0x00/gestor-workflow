@@ -8,6 +8,20 @@ namespace GestorWorkflow.Data.Mappers
 {
     public class WorkflowInstanciaMapper : IMapper<WorkflowInstanciaEntity, WorkflowInstancia>
     {
+        private readonly IMapper<WorkflowModeloEntity, WorkflowModelo> _workflowModeloMapper;
+        private readonly IMapper<EstadoEntity, EstadoModelo> _estadoMapper;
+        private readonly IMapper<RegistoTransicaoEntity, TransicaoInstancia> _registoTransicaoMapper;
+
+        public WorkflowInstanciaMapper(
+            IMapper<WorkflowModeloEntity, WorkflowModelo> workflowModeloMapper,
+            IMapper<EstadoEntity, EstadoModelo> estadoMapper,
+            IMapper<RegistoTransicaoEntity, TransicaoInstancia> registoTransicaoMapper)
+        {
+            _workflowModeloMapper = workflowModeloMapper;
+            _estadoMapper = estadoMapper;
+            _registoTransicaoMapper = registoTransicaoMapper;
+        }
+
         public WorkflowInstanciaEntity MapToDomain(WorkflowInstancia dataModel)
         {
             if (dataModel == null) return null;
@@ -56,7 +70,7 @@ namespace GestorWorkflow.Data.Mappers
                             transicao.DataExecucao,
                             transicao.ExecutadoPorUtilizadorId
                         );
-
+                        
                         if (!transicao.Sucesso)
                             registro.MarcarComoFalha(transicao.ErroMensagem ?? "Erro desconhecido");
 
@@ -81,7 +95,7 @@ namespace GestorWorkflow.Data.Mappers
 
             return new WorkflowInstancia
             {
-                WorkflowInstanciaId = domainModel.Id,
+                // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
                 WorkflowModeloId = domainModel.WorkflowModeloId,
                 StatusId = (int)domainModel.Status,
                 EstadoAtualId = domainModel.EstadoAtualId,

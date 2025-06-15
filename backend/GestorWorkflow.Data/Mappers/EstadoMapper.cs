@@ -1,12 +1,20 @@
 using GestorWorkflow.Core.Entities;
-using GestorWorkflow.Data.Models;
 using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Core.Enums;
+using GestorWorkflow.Data.Models;
+using System;
 
 namespace GestorWorkflow.Data.Mappers
 {
     public class EstadoMapper : IMapper<EstadoEntity, EstadoModelo>
     {
+        private readonly IMapper<PermissaoEntity, Permissao> _permissaoMapper;
+
+        public EstadoMapper(IMapper<PermissaoEntity, Permissao> permissaoMapper)
+        {
+            _permissaoMapper = permissaoMapper;
+        }
+
         public EstadoEntity MapToDomain(EstadoModelo dataModel)
         {
             if (dataModel == null) return null;
@@ -15,14 +23,14 @@ namespace GestorWorkflow.Data.Mappers
 
             var estado = new EstadoEntity(
                 dataModel.EstadoModeloId,
-                dataModel.Nome,
+                dataModel.Nome ?? throw new ArgumentNullException(nameof(dataModel.Nome)),
                 tipoEstado,
                 dataModel.CriadoPorUtilizadorId
             );
 
             estado.AtualizarDescricao(dataModel.Descricao);
             estado.DefinirCor(dataModel.CorHexadecimal);
-
+            
             if (!dataModel.Ativo)
             {
                 estado.Desativar();
@@ -42,8 +50,8 @@ namespace GestorWorkflow.Data.Mappers
 
             return new EstadoModelo
             {
-                EstadoModeloId = domainModel.Id,
-                Nome = domainModel.Nome,
+                // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
+                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Descricao = domainModel.Descricao,
                 TipoEstadoId = (int)domainModel.Tipo,
                 CorHexadecimal = domainModel.CorHexadecimal,
@@ -57,7 +65,7 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null || dataModel == null) return;
 
-            dataModel.Nome = domainModel.Nome;
+            dataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             dataModel.Descricao = domainModel.Descricao;
             dataModel.TipoEstadoId = (int)domainModel.Tipo;
             dataModel.CorHexadecimal = domainModel.CorHexadecimal;

@@ -27,6 +27,19 @@ namespace GestorWorkflow.Data.Context
         {
             base.OnModelCreating(modelBuilder);
 
+            // Configure auto-increment for all entities
+            modelBuilder.Entity<Utilizador>().Property(u => u.UtilizadorId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<TipoEstado>().Property(te => te.TipoEstadoId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<EstadoModelo>().Property(em => em.EstadoModeloId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<WorkflowModelo>().Property(wm => wm.WorkflowModeloId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<WorkflowInstancia>().Property(wi => wi.WorkflowInstanciaId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<TransicaoModelo>().Property(tm => tm.TransicaoModeloId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<TransicaoInstancia>().Property(ti => ti.TransicaoInstanciaId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<PreCondicao>().Property(pc => pc.PreCondicaoId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<PosCondicao>().Property(pc => pc.PosCondicaoId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<Permissao>().Property(p => p.PermissaoId).ValueGeneratedOnAdd();
+            modelBuilder.Entity<Status>().Property(s => s.StatusId).ValueGeneratedOnAdd();
+
             // Configuração da chave composta para UtilizadorPermissao
             modelBuilder.Entity<UtilizadorPermissao>()
                 .HasKey(up => new { up.UtilizadorId, up.PermissaoId });

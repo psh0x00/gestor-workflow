@@ -2,7 +2,6 @@ using GestorWorkflow.Core.Enums;
 
 namespace GestorWorkflow.Core.DTO;
 
-
 public class EstadoDTO
 {
     public int Id { get; set; }
@@ -26,6 +25,7 @@ public class CriarEstadoDTO
 
 public class AtualizarEstadoDTO
 {
+    public string? Nome { get; set; }
     public string? Descricao { get; set; }
     public string? CorHexadecimal { get; set; }
     public bool? Ativo { get; set; }

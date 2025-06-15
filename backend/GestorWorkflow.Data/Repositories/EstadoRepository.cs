@@ -4,6 +4,7 @@ using GestorWorkflow.Core.Entities;
 using GestorWorkflow.Core.Enums;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
+using System.Linq.Expressions;
 
 namespace GestorWorkflow.Data.Repositories
 {
@@ -14,7 +15,7 @@ namespace GestorWorkflow.Data.Repositories
         public EstadoRepository(GestorWorkflowDbContext context, IMapper<EstadoEntity, EstadoModelo> mapper)
             : base(context)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _mapper = mapper;
         }
 
         public async Task<EstadoEntity?> ObterPorIdAsync(int id)
@@ -22,7 +23,6 @@ namespace GestorWorkflow.Data.Repositories
             var estadoModelo = await _dbSet
                 .Include(e => e.TipoEstado)
                 .Include(e => e.CriadoPor)
-                .AsNoTracking()
                 .FirstOrDefaultAsync(e => e.EstadoModeloId == id);
 
             return estadoModelo != null ? _mapper.MapToDomain(estadoModelo) : null;
@@ -33,7 +33,6 @@ namespace GestorWorkflow.Data.Repositories
             var estadosModelo = await _dbSet
                 .Include(e => e.TipoEstado)
                 .Include(e => e.CriadoPor)
-                .AsNoTracking()
                 .ToListAsync();
 
             return estadosModelo.Select(_mapper.MapToDomain);
@@ -45,7 +44,6 @@ namespace GestorWorkflow.Data.Repositories
                 .Include(e => e.TipoEstado)
                 .Include(e => e.CriadoPor)
                 .Where(e => e.Ativo)
-                .AsNoTracking()
                 .ToListAsync();
 
             return estadosModelo.Select(_mapper.MapToDomain);
@@ -59,7 +57,6 @@ namespace GestorWorkflow.Data.Repositories
                 .Include(e => e.TipoEstado)
                 .Include(e => e.CriadoPor)
                 .Where(e => e.TipoEstadoId == tipoId)
-                .AsNoTracking()
                 .ToListAsync();
 
             return estadosModelo.Select(_mapper.MapToDomain);
@@ -68,20 +65,19 @@ namespace GestorWorkflow.Data.Repositories
         public async Task<EstadoEntity> CriarAsync(EstadoEntity estadoEntity)
         {
             var estadoModelo = _mapper.MapToDataModel(estadoEntity);
-            await _dbSet.AddAsync(estadoModelo);
-            return _mapper.MapToDomain(estadoModelo);
+            var createdEstado = await CreateAsync(estadoModelo);
+            return _mapper.MapToDomain(createdEstado);
         }
 
         public async Task<EstadoEntity> AtualizarAsync(EstadoEntity estadoEntity)
         {
-            var estadoModelo = await _dbSet.FindAsync(estadoEntity.Id);
-            if (estadoModelo == null)
-                throw new InvalidOperationException($"Estado com ID {estadoEntity.Id} não encontrado");
+            var existingEstado = await _dbSet.FindAsync(estadoEntity.Id);
+            if (existingEstado == null)
+                throw new InvalidOperationException($"Estado with ID {estadoEntity.Id} not found.");
 
-            _mapper.MapToExistingDataModel(estadoEntity, estadoModelo);
-
-            _dbSet.Update(estadoModelo);
-            return _mapper.MapToDomain(estadoModelo);
+            _mapper.MapToExistingDataModel(estadoEntity, existingEstado);
+            var updatedEstado = Update(existingEstado);
+            return _mapper.MapToDomain(updatedEstado);
         }
 
         public async Task<bool> ExisteAsync(int id)
@@ -103,9 +99,7 @@ namespace GestorWorkflow.Data.Repositories
         {
             var estadoModelo = await _dbSet.FindAsync(id);
             if (estadoModelo != null)
-            {
-                _dbSet.Remove(estadoModelo);
-            }
+                Delete(estadoModelo);
         }
     }
 }

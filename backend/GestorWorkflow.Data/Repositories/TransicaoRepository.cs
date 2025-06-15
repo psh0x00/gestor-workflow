@@ -3,6 +3,7 @@ using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Core.Entities;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
+using System.Linq.Expressions;
 
 namespace GestorWorkflow.Data.Repositories
 {
@@ -13,113 +14,93 @@ namespace GestorWorkflow.Data.Repositories
         public TransicaoRepository(GestorWorkflowDbContext context, IMapper<TransicaoEntity, TransicaoModelo> mapper)
             : base(context)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _mapper = mapper;
         }
 
         public async Task<TransicaoEntity?> ObterPorIdAsync(int id)
         {
-            var transicaoModelo = await _dbSet
+            var transicao = await _dbSet
                 .Include(t => t.EstadoOrigem)
                 .Include(t => t.EstadoDestino)
                 .Include(t => t.PreCondicao)
                 .Include(t => t.PosCondicao)
                 .Include(t => t.Permissoes)
-                .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.TransicaoModeloId == id);
 
-            return transicaoModelo != null ? _mapper.MapToDomain(transicaoModelo) : null;
+            return transicao != null ? _mapper.MapToDomain(transicao) : null;
         }
 
         public async Task<IEnumerable<TransicaoEntity>> ObterTodosAsync()
         {
-            var transicoesModelo = await _dbSet
+            var transicoes = await _dbSet
                 .Include(t => t.EstadoOrigem)
                 .Include(t => t.EstadoDestino)
                 .Include(t => t.PreCondicao)
                 .Include(t => t.PosCondicao)
                 .Include(t => t.Permissoes)
-                .AsNoTracking()
                 .ToListAsync();
 
-            return transicoesModelo.Select(_mapper.MapToDomain);
+            return transicoes.Select(t => _mapper.MapToDomain(t));
         }
 
         public async Task<IEnumerable<TransicaoEntity>> ObterPorEstadoOrigemAsync(int estadoOrigemId)
         {
-            var transicoesModelo = await _dbSet
+            var transicoes = await _dbSet
                 .Include(t => t.EstadoOrigem)
                 .Include(t => t.EstadoDestino)
                 .Include(t => t.PreCondicao)
                 .Include(t => t.PosCondicao)
                 .Include(t => t.Permissoes)
                 .Where(t => t.EstadoOrigemId == estadoOrigemId)
-                .AsNoTracking()
                 .ToListAsync();
 
-            return transicoesModelo.Select(_mapper.MapToDomain);
+            return transicoes.Select(t => _mapper.MapToDomain(t));
         }
 
         public async Task<IEnumerable<TransicaoEntity>> ObterPorEstadoDestinoAsync(int estadoDestinoId)
         {
-            var transicoesModelo = await _dbSet
+            var transicoes = await _dbSet
                 .Include(t => t.EstadoOrigem)
                 .Include(t => t.EstadoDestino)
                 .Include(t => t.PreCondicao)
                 .Include(t => t.PosCondicao)
                 .Include(t => t.Permissoes)
                 .Where(t => t.EstadoDestinoId == estadoDestinoId)
-                .AsNoTracking()
                 .ToListAsync();
 
-            return transicoesModelo.Select(_mapper.MapToDomain);
+            return transicoes.Select(t => _mapper.MapToDomain(t));
         }
 
         public async Task<IEnumerable<TransicaoEntity>> ObterTransicoesIniciaisAsync()
         {
-            var transicoesModelo = await _dbSet
+            var transicoes = await _dbSet
                 .Include(t => t.EstadoOrigem)
                 .Include(t => t.EstadoDestino)
                 .Include(t => t.PreCondicao)
                 .Include(t => t.PosCondicao)
                 .Include(t => t.Permissoes)
                 .Where(t => t.EstadoOrigemId == null)
-                .AsNoTracking()
                 .ToListAsync();
 
-            return transicoesModelo.Select(_mapper.MapToDomain);
+            return transicoes.Select(t => _mapper.MapToDomain(t));
         }
 
         public async Task<TransicaoEntity> CriarAsync(TransicaoEntity transicaoEntity)
         {
-            var transicaoModelo = _mapper.MapToDataModel(transicaoEntity);
-            await _dbSet.AddAsync(transicaoModelo);
-            return _mapper.MapToDomain(transicaoModelo);
+            var transicao = _mapper.MapToDataModel(transicaoEntity);
+            var createdTransicao = await CreateAsync(transicao);
+            return _mapper.MapToDomain(createdTransicao);
         }
 
         public async Task<TransicaoEntity> AtualizarAsync(TransicaoEntity transicaoEntity)
         {
-            var transicaoModelo = await _dbSet
-                .Include(t => t.Permissoes)
-                .FirstOrDefaultAsync(t => t.TransicaoModeloId == transicaoEntity.Id);
+            var existingTransicao = await _dbSet.FindAsync(transicaoEntity.Id);
+            if (existingTransicao == null)
+                throw new InvalidOperationException($"Transicao with ID {transicaoEntity.Id} not found.");
 
-            if (transicaoModelo == null)
-                throw new InvalidOperationException($"Transição com ID {transicaoEntity.Id} não encontrada");
-
-            _mapper.MapToExistingDataModel(transicaoEntity, transicaoModelo);
-
-            // Atualizar permissões
-            transicaoModelo.Permissoes.Clear();
-            foreach (var permissaoId in transicaoEntity.PermissoesIds)
-            {
-                var permissao = await _context.Permissoes.FindAsync(permissaoId);
-                if (permissao != null)
-                {
-                    transicaoModelo.Permissoes.Add(permissao);
-                }
-            }
-
-            _dbSet.Update(transicaoModelo);
-            return _mapper.MapToDomain(transicaoModelo);
+            _mapper.MapToExistingDataModel(transicaoEntity, existingTransicao);
+            var updatedTransicao = Update(existingTransicao);
+            return _mapper.MapToDomain(updatedTransicao);
         }
 
         public async Task<bool> ExisteAsync(int id)
@@ -129,11 +110,9 @@ namespace GestorWorkflow.Data.Repositories
 
         public async Task RemoverAsync(int id)
         {
-            var transicaoModelo = await _dbSet.FindAsync(id);
-            if (transicaoModelo != null)
-            {
-                _dbSet.Remove(transicaoModelo);
-            }
+            var transicao = await _dbSet.FindAsync(id);
+            if (transicao != null)
+                Delete(transicao);
         }
     }
 }

@@ -39,8 +39,8 @@ namespace GestorWorkflow.Data.Mappers
 
             return new PosCondicao
             {
-                PosCondicaoId = domainModel.Id,
-                Nome = domainModel.Nome,
+                // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
+                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Descricao = domainModel.Descricao,
                 AcaoSql = domainModel.AcaoSql,
                 Ativo = domainModel.Ativo,
@@ -53,7 +53,7 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null || existingDataModel == null) return;
 
-            existingDataModel.Nome = domainModel.Nome;
+            existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             existingDataModel.Descricao = domainModel.Descricao;
             existingDataModel.AcaoSql = domainModel.AcaoSql;
             existingDataModel.Ativo = domainModel.Ativo;

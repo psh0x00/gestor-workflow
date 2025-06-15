@@ -1,11 +1,19 @@
 using GestorWorkflow.Core.Entities;
 using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Models;
+using System;
 
 namespace GestorWorkflow.Data.Mappers
 {
     public class UtilizadorMapper : IMapper<UtilizadorEntity, Utilizador>
     {
+        private readonly IMapper<PermissaoEntity, Permissao> _permissaoMapper;
+
+        public UtilizadorMapper(IMapper<PermissaoEntity, Permissao> permissaoMapper)
+        {
+            _permissaoMapper = permissaoMapper;
+        }
+
         public UtilizadorEntity MapToDomain(Utilizador dataModel)
         {
             if (dataModel == null) return null;
@@ -39,8 +47,7 @@ namespace GestorWorkflow.Data.Mappers
 
             return new Utilizador
             {
-                UtilizadorId = domainModel.Id,
-                Nome = domainModel.Nome,
+                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Funcao = domainModel.Funcao
             };
         }
@@ -49,7 +56,7 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null || existingDataModel == null) return;
 
-            existingDataModel.Nome = domainModel.Nome;
+            existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             existingDataModel.Funcao = domainModel.Funcao;
         }
     }

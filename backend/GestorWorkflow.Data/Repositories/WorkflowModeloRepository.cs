@@ -3,6 +3,7 @@ using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace GestorWorkflow.Data.Repositories;
 
@@ -13,12 +14,12 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
     public WorkflowModeloRepository(GestorWorkflowDbContext context, IMapper<WorkflowModeloEntity, WorkflowModelo> mapper)
         : base(context)
     {
-        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _mapper = mapper;
     }
 
     public async Task<WorkflowModeloEntity?> ObterPorIdAsync(int id)
     {
-        var workflowModelo = await _context.WorkflowModelos
+        var workflowModelo = await _dbSet
             .Include(w => w.EstadoInicial)
             .Include(w => w.CriadoPor)
             .Include(w => w.AlteradoPor)
@@ -29,7 +30,7 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
 
     public async Task<WorkflowModeloEntity?> ObterComDetalhesAsync(int id)
     {
-        var workflowModelo = await _context.WorkflowModelos
+        var workflowModelo = await _dbSet
             .Include(w => w.EstadoInicial)
             .Include(w => w.TransicoesModelo)
                 .ThenInclude(t => t.EstadoOrigem)
@@ -50,7 +51,7 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
 
     public async Task<IEnumerable<WorkflowModeloEntity>> ObterTodosAsync()
     {
-        var workflowModelos = await _context.WorkflowModelos
+        var workflowModelos = await _dbSet
             .Include(w => w.EstadoInicial)
             .Include(w => w.CriadoPor)
             .ToListAsync();
@@ -60,7 +61,7 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
 
     public async Task<IEnumerable<WorkflowModeloEntity>> ObterAtivosAsync()
     {
-        var workflowModelos = await _context.WorkflowModelos
+        var workflowModelos = await _dbSet
             .Include(w => w.EstadoInicial)
             .Include(w => w.CriadoPor)
             .Where(w => w.Ativo)
@@ -71,7 +72,7 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
 
     public async Task<IEnumerable<WorkflowModeloEntity>> ObterPorCriadorAsync(int criadorId)
     {
-        var workflowModelos = await _context.WorkflowModelos
+        var workflowModelos = await _dbSet
             .Include(w => w.EstadoInicial)
             .Include(w => w.CriadoPor)
             .Where(w => w.CriadoPorUtilizadorId == criadorId)
@@ -83,33 +84,29 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
     public async Task<WorkflowModeloEntity> CriarAsync(WorkflowModeloEntity workflowModeloEntity)
     {
         var workflowModelo = _mapper.MapToDataModel(workflowModeloEntity);
-        await _context.WorkflowModelos.AddAsync(workflowModelo);
-        return _mapper.MapToDomain(workflowModelo);
+        var createdWorkflowModelo = await CreateAsync(workflowModelo);
+        return _mapper.MapToDomain(createdWorkflowModelo);
     }
 
     public async Task<WorkflowModeloEntity> AtualizarAsync(WorkflowModeloEntity workflowModeloEntity)
     {
-        var workflowModelo = await _context.WorkflowModelos
-            .FirstOrDefaultAsync(w => w.WorkflowModeloId == workflowModeloEntity.Id);
+        var existingWorkflowModelo = await _dbSet.FindAsync(workflowModeloEntity.Id);
+        if (existingWorkflowModelo == null)
+            throw new InvalidOperationException($"WorkflowModelo with ID {workflowModeloEntity.Id} not found.");
 
-        if (workflowModelo == null)
-            throw new ArgumentException("Workflow Modelo não encontrado", nameof(workflowModeloEntity));
-
-        _mapper.MapToExistingDataModel(workflowModeloEntity, workflowModelo);
-        _context.WorkflowModelos.Update(workflowModelo);
-
-        return _mapper.MapToDomain(workflowModelo);
+        _mapper.MapToExistingDataModel(workflowModeloEntity, existingWorkflowModelo);
+        var updatedWorkflowModelo = Update(existingWorkflowModelo);
+        return _mapper.MapToDomain(updatedWorkflowModelo);
     }
 
     public async Task<bool> ExisteAsync(int id)
     {
-        return await _context.WorkflowModelos
-            .AnyAsync(w => w.WorkflowModeloId == id);
+        return await _dbSet.AnyAsync(w => w.WorkflowModeloId == id);
     }
 
     public async Task<bool> ExisteNomeAsync(string nome, int? excludeId = null)
     {
-        var query = _context.WorkflowModelos.Where(w => w.Nome == nome);
+        var query = _dbSet.Where(w => w.Nome == nome);
 
         if (excludeId.HasValue)
             query = query.Where(w => w.WorkflowModeloId != excludeId.Value);
@@ -119,7 +116,7 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
 
     public async Task RemoverAsync(int id)
     {
-        var workflowModelo = await _context.WorkflowModelos
+        var workflowModelo = await _dbSet
             .Include(w => w.WorkflowInstancias)
             .FirstOrDefaultAsync(w => w.WorkflowModeloId == id);
 
@@ -130,7 +127,7 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
                 throw new InvalidOperationException("Não é possível remover o workflow modelo pois existem instâncias associadas.");
             }
 
-            _context.WorkflowModelos.Remove(workflowModelo);
+            Delete(workflowModelo);
         }
     }
 }
