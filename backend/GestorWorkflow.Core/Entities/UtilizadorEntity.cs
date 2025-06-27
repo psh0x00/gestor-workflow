@@ -5,18 +5,26 @@ public class UtilizadorEntity
     public int Id { get; private set; }
     public string Nome { get; private set; }
     public string Funcao { get; private set; }
+    public string Email { get; private set; }
+    public string PasswordHash { get; private set; }
     public List<int> PermissoesIds { get; private set; }
 
-    public UtilizadorEntity(int id, string nome, string funcao)
+    public UtilizadorEntity(int id, string nome, string funcao, string email, string passwordHash)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new ArgumentException("Nome é obrigatório", nameof(nome));
         if (string.IsNullOrWhiteSpace(funcao))
             throw new ArgumentException("Função é obrigatória", nameof(funcao));
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email é obrigatório", nameof(email));
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("PasswordHash é obrigatório", nameof(passwordHash));
 
         Id = id;
         Nome = nome;
         Funcao = funcao;
+        Email = email;
+        PasswordHash = passwordHash;
         PermissoesIds = new List<int>();
     }
 

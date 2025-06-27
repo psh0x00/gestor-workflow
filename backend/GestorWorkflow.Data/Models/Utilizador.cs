@@ -21,6 +21,16 @@ namespace GestorWorkflow.Data.Models
         [StringLength(100)]
         public string Funcao { get; set; } = string.Empty;
 
+        [Required]
+        [Column("Email")]
+        [StringLength(150)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [Column("PasswordHash")]
+        [StringLength(256)]
+        public string PasswordHash { get; set; } = string.Empty;
+
         // Navegação
         public virtual ICollection<UtilizadorPermissao> UtilizadorPermissoes { get; set; } = new List<UtilizadorPermissao>();
         public virtual ICollection<TransicaoInstancia> TransicoesExecutadas { get; set; } = new List<TransicaoInstancia>();

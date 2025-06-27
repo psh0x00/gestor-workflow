@@ -21,7 +21,9 @@ namespace GestorWorkflow.Data.Mappers
             var utilizador = new UtilizadorEntity(
                 dataModel.UtilizadorId,
                 dataModel.Nome,
-                dataModel.Funcao
+                dataModel.Funcao,
+                dataModel.Email,
+                dataModel.PasswordHash
             );
 
             // Mapear permissões se necessário
@@ -48,7 +50,9 @@ namespace GestorWorkflow.Data.Mappers
             return new Utilizador
             {
                 Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
-                Funcao = domainModel.Funcao
+                Funcao = domainModel.Funcao,
+                Email = domainModel.Email,
+                PasswordHash = domainModel.PasswordHash
             };
         }
 
@@ -58,6 +62,8 @@ namespace GestorWorkflow.Data.Mappers
 
             existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
             existingDataModel.Funcao = domainModel.Funcao;
+            existingDataModel.Email = domainModel.Email;
+            existingDataModel.PasswordHash = domainModel.PasswordHash;
         }
     }
 }

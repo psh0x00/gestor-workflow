@@ -168,7 +168,9 @@ public class WorkflowQueryRepository : IWorkflowQueryRepository
             return utilizadores.Select(u => new UtilizadorEntity(
                 u.UtilizadorId,
                 u.Nome,
-                u.Funcao
+                u.Funcao,
+                u.Email,
+                u.PasswordHash
             ));
         }
         catch (Exception ex)
