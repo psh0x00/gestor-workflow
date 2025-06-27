@@ -3,6 +3,12 @@
     "@devexpress/dx-react-core": "^4.0.11",
     "@devexpress/dx-react-grid": "^4.0.11",
     "devextreme": "^24.2.8",
-    "devextreme-react": "^24.2.8"
+    "devextreme-react": "^24.2.8",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/css-modules": "^1.0.5",
+    "typescript": "^5.8.3"
   }
 }
