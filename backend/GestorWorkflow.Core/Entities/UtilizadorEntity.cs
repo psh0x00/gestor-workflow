@@ -13,8 +13,11 @@ public class UtilizadorEntity
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new ArgumentException("Nome é obrigatório", nameof(nome));
-        if (string.IsNullOrWhiteSpace(funcao))
-            throw new ArgumentException("Função é obrigatória", nameof(funcao));
+        // Permitir funcao nulo ou vazio, apenas warning opcional
+        if (funcao == null)
+            funcao = string.Empty;
+        //if (string.IsNullOrWhiteSpace(funcao))
+        //    throw new ArgumentException("Função é obrigatória", nameof(funcao));
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email é obrigatório", nameof(email));
         if (string.IsNullOrWhiteSpace(passwordHash))

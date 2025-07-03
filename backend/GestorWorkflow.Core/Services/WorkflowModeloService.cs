@@ -21,32 +21,57 @@ public class WorkflowModeloService : IWorkflowModeloService
 
     public async Task<WorkflowModeloDTO> CriarWorkflowModeloAsync(CriarWorkflowModeloDTO dto)
     {
-        try
+        _logger.LogInformation("Criando novo workflow modelo: {Nome}", dto.Nome);
+
+        if (await _unitOfWork.WorkflowModelos.ExisteNomeAsync(dto.Nome))
+            throw new WorkflowModeloNomeJaExisteException(dto.Nome);
+
+        var novoId = await GerarProximoIdWorkflowModeloAsync();
+
+        // 1. Criar estados e guardar os IDs
+        var estadoIdMap = new Dictionary<int, int>(); // idx original -> id criado
+        int? estadoInicialId = null;
+        var estadosCriados = new List<EstadoEntity>();
+
+        for (int i = 0; i < dto.Estados.Count; i++)
         {
-            _logger.LogInformation("Criando novo workflow modelo: {Nome}", dto.Nome);
+            var estadoDto = dto.Estados[i];
+            var estadoEntity = new EstadoEntity(
+                0, // o ID será gerado pela BD
+                estadoDto.Nome,
+                estadoDto.Tipo,
+                estadoDto.CriadoPorId
+            );
+            estadoEntity.AtualizarDescricao(estadoDto.Descricao);
+            estadoEntity.DefinirCor(estadoDto.CorHexadecimal);
 
-            // Verificar se já existe um workflow com o mesmo nome
-            if (await _unitOfWork.WorkflowModelos.ExisteNomeAsync(dto.Nome))
-                throw new WorkflowModeloNomeJaExisteException(dto.Nome);
-
-            var novoId = await GerarProximoIdWorkflowModeloAsync();
-            var workflow = new WorkflowModeloEntity(novoId, dto.Nome, dto.EstadoInicialId, dto.CriadoPorId);
-
-            if (!string.IsNullOrEmpty(dto.Descricao))
-                workflow.AtualizarDescricao(dto.Descricao);
-
-            var workflowCriado = await _unitOfWork.WorkflowModelos.CriarAsync(workflow);
+            var estadoCriado = await _unitOfWork.Estados.CriarAsync(estadoEntity);
             await _unitOfWork.SaveChangesAsync();
+            estadoIdMap[i] = estadoCriado.Id;
+            estadosCriados.Add(estadoCriado);
 
-            _logger.LogInformation("Workflow modelo criado com sucesso: ID {Id}", workflowCriado.Id);
+            if (estadoDto.IsInicial)
+                estadoInicialId = estadoCriado.Id;
+        }
 
-            return await MapearParaWorkflowModeloDtoAsync(workflowCriado);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao criar workflow modelo: {Nome}", dto.Nome);
-            throw;
-        }
+        if (estadoInicialId == null)
+            throw new Exception("Nenhum estado inicial definido.");
+
+        // 2. Criar o modelo de workflow com o estado inicial correto
+        var workflow = new WorkflowModeloEntity(novoId, dto.Nome, estadoInicialId.Value, dto.CriadoPorId);
+        if (!string.IsNullOrEmpty(dto.Descricao))
+            workflow.AtualizarDescricao(dto.Descricao);
+
+        // Associar estados ao modelo
+        foreach (var estado in estadosCriados)
+            workflow.AdicionarEstado(estado);
+
+        var workflowCriado = await _unitOfWork.WorkflowModelos.CriarAsync(workflow);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("Workflow modelo criado com sucesso: ID {Id}", workflowCriado.Id);
+
+        return await MapearParaWorkflowModeloDtoAsync(workflowCriado);
     }
 
     public async Task<WorkflowModeloDTO> ObterWorkflowModeloPorIdAsync(int id)
@@ -171,4 +196,4 @@ public class WorkflowModeloService : IWorkflowModeloService
 
         return dto;
     }
-} 
+}

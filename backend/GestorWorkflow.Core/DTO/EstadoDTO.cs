@@ -21,6 +21,8 @@ public class CriarEstadoDTO
     public TipoEstadoEntity Tipo { get; set; }
     public string? CorHexadecimal { get; set; }
     public int? CriadoPorId { get; set; }
+    public bool IsInicial { get; set; }
+    public bool IsFinal { get; set; }
 }
 
 public class AtualizarEstadoDTO

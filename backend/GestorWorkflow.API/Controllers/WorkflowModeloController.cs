@@ -1,6 +1,8 @@
 using GestorWorkflow.Core.DTO;
 using GestorWorkflow.Core.Interfaces;
+using GestorWorkflow.Core.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GestorWorkflow.API.Controllers;
 
@@ -9,17 +11,21 @@ namespace GestorWorkflow.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/workflow-modelos")]
+[Authorize] // Garante que o controller só aceita requests autenticadas e preenche as claims do utilizador
 public class WorkflowModeloController : ControllerBase
 {
     private readonly IWorkflowModeloService _workflowModeloService;
     private readonly ILogger<WorkflowModeloController> _logger;
+    private readonly IUnitOfWork _unitOfWork;
 
     public WorkflowModeloController(
         IWorkflowModeloService workflowModeloService,
-        ILogger<WorkflowModeloController> logger)
+        ILogger<WorkflowModeloController> logger,
+        IUnitOfWork unitOfWork)
     {
         _workflowModeloService = workflowModeloService ?? throw new ArgumentNullException(nameof(workflowModeloService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     /// <summary>
@@ -55,6 +61,49 @@ public class WorkflowModeloController : ControllerBase
     {
         try
         {
+            // O frontend NÃO deve enviar CriadoPorId. O backend irá preencher automaticamente com o utilizador autenticado.
+
+            // Log do JSON recebido
+            _logger.LogInformation("JSON recebido em Criar: {Json}", System.Text.Json.JsonSerializer.Serialize(dto));
+
+            // Logar todas as claims recebidas para debug
+            foreach (var claim in User.Claims)
+            {
+                _logger.LogInformation($"Claim recebida: {claim.Type} = {claim.Value}");
+            }
+
+            // Log extra: mostrar todos os claims recebidos
+            Console.WriteLine("--- Claims recebidas no backend ---");
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
+            }
+
+            // Obter o ID do utilizador autenticado (cobre todos os possíveis nomes de claim)
+            var userIdClaim = User.Claims.FirstOrDefault(c =>
+                c.Type == "sub" ||
+                c.Type == "userId" ||
+                c.Type == "id" ||
+                c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+            );
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            {
+                _logger.LogWarning($"Não foi possível obter o ID do utilizador autenticado. Claims disponíveis: {string.Join(", ", User.Claims.Select(c => c.Type + "=" + c.Value))}");
+                return Unauthorized("Utilizador não autenticado ou sem claim de ID.");
+            }
+
+            // ATENÇÃO: O campo CriadoPorId enviado pelo frontend será SEMPRE ignorado.
+            // O valor será preenchido automaticamente com o ID do utilizador autenticado (claim JWT).
+            // Não é necessário (nem recomendado) enviar CriadoPorId no payload do frontend.
+            dto.CriadoPorId = userId;
+            if (dto.Estados != null)
+            {
+                foreach (var estado in dto.Estados)
+                {
+                    estado.CriadoPorId = userId;
+                }
+            }
+
             var modelo = await _workflowModeloService.CriarWorkflowModeloAsync(dto);
             return CreatedAtAction(nameof(ObterPorId), new { id = modelo.Id }, modelo);
         }
@@ -265,4 +314,33 @@ public class WorkflowModeloController : ControllerBase
             return StatusCode(500, "Erro interno ao validar modelo de workflow");
         }
     }
-} 
+
+    /// <summary>
+    /// Endpoint de teste para criar um estado isoladamente
+    /// </summary>
+    /// <param name="dto">Dados do estado a ser criado</param>
+    /// <returns>ID e nome do estado criado</returns>
+    [HttpPost("test-estado")]
+    public async Task<ActionResult> CriarEstadoTeste([FromBody] CriarEstadoDTO dto)
+    {
+        try
+        {
+            var estadoEntity = new EstadoEntity(
+                0,
+                dto.Nome,
+                dto.Tipo,
+                dto.CriadoPorId
+            );
+            estadoEntity.AtualizarDescricao(dto.Descricao);
+            estadoEntity.DefinirCor(dto.CorHexadecimal);
+            var estadoCriado = await _unitOfWork.Estados.CriarAsync(estadoEntity);
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { estadoCriado.Id, estadoCriado.Nome });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar estado de teste: {Mensagem}", ex.Message);
+            return StatusCode(500, ex.ToString());
+        }
+    }
+}

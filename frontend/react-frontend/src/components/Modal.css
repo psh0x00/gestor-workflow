@@ -1,0 +1,40 @@
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 32px 32px 32px;
+  min-width: 1000px;
+  max-width: 1000px;
+  height: 500px;
+  box-shadow: 0 8px 32px rgba(80,80,160,0.18);
+  position: relative;
+  animation: modalIn 0.2s;
+  overflow-y: auto;
+  max-height: 90vh;
+}
+@keyframes modalIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.modal-close:hover {
+  color: #fc466b;
+}

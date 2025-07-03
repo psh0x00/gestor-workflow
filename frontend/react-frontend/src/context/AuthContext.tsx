@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const result = await authService.login({ email, password });
+    localStorage.setItem('token', result.token); // Salva o token JWT
     setUser(email); // Aqui pode guardar token ou info do utilizador
   };
 
