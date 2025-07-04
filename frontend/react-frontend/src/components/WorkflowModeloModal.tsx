@@ -17,6 +17,11 @@ interface EstadoComTipo extends Estado {
   funcoes: string[];
 }
 
+interface Transicao {
+  origem: string;
+  destino: string;
+}
+
 interface WorkflowModeloModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -42,6 +47,8 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
   const [funcoesPorEstado, setFuncoesPorEstado] = useState<{ [idx: number]: string[] }>({});
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [transicoes, setTransicoes] = useState<Transicao[]>([]);
+  const [novaTransicao, setNovaTransicao] = useState<Transicao>({ origem: '', destino: '' });
 
   const adicionarEstado = () => {
     if (novoEstado.nome.trim() !== '') {
@@ -71,6 +78,17 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
 
   const handleFuncoesEstadoChange = (idx: number, funcoesSelecionadas: string[]) => {
     setFuncoesPorEstado(prev => ({ ...prev, [idx]: funcoesSelecionadas }));
+  };
+
+  const adicionarTransicao = () => {
+    if (novaTransicao.origem && novaTransicao.destino && novaTransicao.origem !== novaTransicao.destino) {
+      setTransicoes([...transicoes, { ...novaTransicao }]);
+      setNovaTransicao({ origem: '', destino: '' });
+    }
+  };
+
+  const removerTransicao = (idx: number) => {
+    setTransicoes(transicoes.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,7 +130,10 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
           isInicial: e.isInicial,
           isFinal: e.isFinal
         })),
-        transicoes: [] // implementar se necessário
+        transicoes: transicoes.map(t => ({
+          origem: t.origem,
+          destino: t.destino
+        }))
       };
       try {
         // Obter token JWT do localStorage/sessionStorage/cookie conforme sua implementação
@@ -309,6 +330,62 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
           />
           <button type="button" className="novo-modelo-btn" onClick={adicionarEstado} style={{ padding: '8px 12px', borderRadius: 6 }}>
             Adicionar Estado
+          </button>
+        </div>
+        <h3 style={{ margin: '16px 0 8px 0' }}>Transições</h3>
+        <ul style={{ marginBottom: 8 }}>
+          {transicoes.map((t, idx) => (
+            <li key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 500 }}><b>{t.origem}</b> <span style={{ color: '#888', fontWeight: 400 }}>→</span> <b>{t.destino}</b></span>
+              <button
+                type="button"
+                className="remover-btn"
+                onClick={() => removerTransicao(idx)}
+                style={{
+                  background: 'linear-gradient(90deg, #fc466b 0%, #3f5efb 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}
+              >
+                Remover
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <select
+            className="input-padrao"
+            value={novaTransicao.origem}
+            onChange={e => setNovaTransicao({ ...novaTransicao, origem: e.target.value })}
+            style={{ flex: 2, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
+          >
+            <option value="">Origem</option>
+            {estados.map((estado, idx) => (
+              <option key={idx} value={estado.nome}>{estado.nome}</option>
+            ))}
+          </select>
+          <select
+            className="input-padrao"
+            value={novaTransicao.destino}
+            onChange={e => setNovaTransicao({ ...novaTransicao, destino: e.target.value })}
+            style={{ flex: 2, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
+          >
+            <option value="">Destino</option>
+            {estados.map((estado, idx) => (
+              <option key={idx} value={estado.nome}>{estado.nome}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="novo-modelo-btn"
+            onClick={adicionarTransicao}
+            style={{ padding: '8px 12px', borderRadius: 6 }}
+          >
+            Adicionar Transição
           </button>
         </div>
         {mensagem && (

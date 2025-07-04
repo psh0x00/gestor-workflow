@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as authService from '../services/authService';
 
 interface AuthContextType {
@@ -9,16 +9,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getUserFromToken() {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Pode ajustar para retornar o email, id ou outro campo do utilizador
+    return payload.email || payload.sub || payload.nameid || payload.userId || payload.userid || null;
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<string | null>(() => getUserFromToken());
+
+  useEffect(() => {
+    // Atualiza o user se o token mudar (ex: logout em outra tab)
+    const onStorage = () => setUser(getUserFromToken());
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   const login = async (email: string, password: string) => {
     const result = await authService.login({ email, password });
     localStorage.setItem('token', result.token); // Salva o token JWT
-    setUser(email); // Aqui pode guardar token ou info do utilizador
+    setUser(getUserFromToken());
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
   };
 

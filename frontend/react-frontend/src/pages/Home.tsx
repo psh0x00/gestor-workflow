@@ -1,22 +1,35 @@
-import React, { useState } from 'react';
-import Modal from '../components/Modal';
+import React, { useState, useEffect } from 'react';
 import WorkflowModeloModal from '../components/WorkflowModeloModal';
 import './Home.css';
+import { listarWorkflowModelos } from '../services/workflowModeloService';
+import { useAuth } from '../context/AuthContext';
 
 const Home: React.FC = () => {
+  const { logout, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'todos' | 'meus'>('todos');
   const [search, setSearch] = useState('');
   const [filtros, setFiltros] = useState({ ativo: 'todos' });
-  const [modalOpen, setModalOpen] = useState(false);
-
-  // Mock data para exemplo
-  const modelos = [
-    { id: 1, nome: 'Aprovação de Documentos', ativo: true, criadoPorMim: true },
-    { id: 2, nome: 'Processo de Compra', ativo: false, criadoPorMim: false },
-    { id: 3, nome: 'Onboarding de Colaborador', ativo: true, criadoPorMim: true },
-  ];
-
+  const [modelos, setModelos] = useState<any[]>([]);
+  const [loadingModelos, setLoadingModelos] = useState(true);
+  const [erroModelos, setErroModelos] = useState<string | null>(null);
   const [workflowModalOpen, setWorkflowModalOpen] = useState(false);
+
+  useEffect(() => {
+    async function fetchModelos() {
+      setLoadingModelos(true);
+      setErroModelos(null);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await listarWorkflowModelos(token ?? undefined);
+        setModelos(res.data);
+      } catch (err: any) {
+        setErroModelos('Erro ao carregar modelos.');
+      } finally {
+        setLoadingModelos(false);
+      }
+    }
+    fetchModelos();
+  }, []);
 
   const handleNovoModelo = (data: any) => {
     // Aqui podes fazer a chamada à API ou atualizar o estado local
@@ -24,8 +37,21 @@ const Home: React.FC = () => {
     setWorkflowModalOpen(false);
   };
 
+  // Obter o id do utilizador logado (assumindo que está no token JWT)
+  function getUserIdFromToken() {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload['nameid'] || payload['sub'] || payload['userId'] || payload['userid'] || null;
+    } catch {
+      return null;
+    }
+  }
+  const userId = getUserIdFromToken();
+
   const modelosFiltrados = modelos.filter(m => {
-    if (activeTab === 'meus' && !m.criadoPorMim) return false;
+    if (activeTab === 'meus' && userId && m.criadoPorId !== undefined && m.criadoPorId !== userId && m.criadoPorId !== Number(userId)) return false;
     if (filtros.ativo === 'ativos' && !m.ativo) return false;
     if (filtros.ativo === 'inativos' && m.ativo) return false;
     if (search && !m.nome.toLowerCase().includes(search.toLowerCase())) return false;
@@ -37,6 +63,28 @@ const Home: React.FC = () => {
       <div className="home-container">
         <div className="home-header">
           <h1>Gestão de Workflows</h1>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
+            {user && (
+              <>
+                <span style={{ fontWeight: 500, color: '#333' }}>{user}</span>
+                <button
+                  onClick={logout}
+                  style={{
+                    background: 'linear-gradient(90deg, #fc466b 0%, #3f5efb 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '8px 18px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    fontSize: 16
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <div className="tabs">
           <button className={activeTab === 'todos' ? 'active' : ''} onClick={() => setActiveTab('todos')}>Todos os Modelos</button>
@@ -62,8 +110,24 @@ const Home: React.FC = () => {
           onSubmit={handleNovoModelo}
         />
         <div className="modelos-lista">
-          {modelosFiltrados.length === 0 ? (
-            <p>Nenhum modelo encontrado.</p>
+          {loadingModelos ? (
+            <p>A carregar modelos...</p>
+          ) : erroModelos ? (
+            <p style={{ color: 'red' }}>{erroModelos}</p>
+          ) : modelosFiltrados.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '220px',
+              width: '100%',
+              textAlign: 'center',
+              color: '#888'
+            }}>
+              <span style={{ fontSize: 48, marginBottom: 12, opacity: 0.6 }}>📄</span>
+              <p style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>Nenhum modelo encontrado.</p>
+            </div>
           ) : (
             <div className="modelos-cards">
               {modelosFiltrados.map(m => (
