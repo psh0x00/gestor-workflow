@@ -25,7 +25,7 @@ namespace GestorWorkflow.Data.Models
         public DateTime DataCriacao { get; set; }
 
         [Column("id_estado_modelo")]
-        public int EstadoInicialId { get; set; }
+        public int? EstadoInicialId { get; set; }
 
         [Column("criado_por_utilizador_id")]
         public int CriadoPorUtilizadorId { get; set; }

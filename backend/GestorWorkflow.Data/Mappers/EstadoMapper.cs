@@ -44,7 +44,7 @@ namespace GestorWorkflow.Data.Mappers
             return MapToDomain(dataModel); // Não há detalhes adicionais necessários para Estado
         }
 
-        public EstadoModelo MapToDataModel(EstadoEntity domainModel)
+        public EstadoModelo MapToDataModel(EstadoEntity domainModel, int workflowModeloId)
         {
             if (domainModel == null) return null;
 
@@ -57,8 +57,14 @@ namespace GestorWorkflow.Data.Mappers
                 CorHexadecimal = domainModel.CorHexadecimal,
                 Ativo = domainModel.Ativo,
                 DataCriacao = domainModel.DataCriacao,
-                CriadoPorUtilizadorId = domainModel.CriadoPorId
+                CriadoPorUtilizadorId = domainModel.CriadoPorId,
+                WorkflowModeloId = workflowModeloId
             };
+        }
+
+        public EstadoModelo MapToDataModel(EstadoEntity domainModel)
+        {
+            return MapToDataModel(domainModel, 0);
         }
 
         public void MapToExistingDataModel(EstadoEntity domainModel, EstadoModelo dataModel)

@@ -6,7 +6,7 @@ public class WorkflowModeloEntity
         public string Nome { get; private set; }
         public string? Descricao { get; private set; }
         public string Versao { get; private set; }
-        public int EstadoInicialId { get; private set; }
+        public int? EstadoInicialId { get; private set; }
         public bool Ativo { get; private set; }
         public DateTime DataCriacao { get; private set; }
         public DateTime? DataUltimaAlteracao { get; private set; }
@@ -19,7 +19,7 @@ public class WorkflowModeloEntity
         public IReadOnlyList<TransicaoEntity> Transicoes => _transicoes.AsReadOnly();
         public IReadOnlyList<EstadoEntity> Estados => _estados.AsReadOnly();
 
-        public WorkflowModeloEntity(int id, string nome, int estadoInicialId, int criadoPorId)
+        public WorkflowModeloEntity(int id, string nome, int? estadoInicialId, int criadoPorId)
         {
             if (string.IsNullOrWhiteSpace(nome))
                 throw new ArgumentException("Nome é obrigatório", nameof(nome));
@@ -107,7 +107,7 @@ public class WorkflowModeloEntity
                 return false;
 
             // Verifica se o estado inicial definido existe
-            if (!_estados.Any(e => e.Id == EstadoInicialId))
+            if (EstadoInicialId == null || !_estados.Any(e => e.Id == EstadoInicialId))
                 return false;
 
             return true;

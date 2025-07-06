@@ -69,6 +69,13 @@ namespace GestorWorkflow.Data.Repositories
             return _mapper.MapToDomain(createdEstado);
         }
 
+        public async Task<EstadoEntity> CriarAsync(EstadoEntity estadoEntity, int workflowModeloId)
+        {
+            var estadoModelo = _mapper.MapToDataModel(estadoEntity, workflowModeloId);
+            var createdEstado = await CreateAsync(estadoModelo);
+            return _mapper.MapToDomain(createdEstado);
+        }
+
         public async Task<EstadoEntity> AtualizarAsync(EstadoEntity estadoEntity)
         {
             var existingEstado = await _dbSet.FindAsync(estadoEntity.Id);

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GestorWorkflow.Core.DTO;
 
 public class TransicaoDTO
@@ -27,6 +29,12 @@ public class CriarTransicaoDTO
     public int? PreCondicaoId { get; set; }
     public int? PosCondicaoId { get; set; }
     public List<int> PermissoesIds { get; set; } = new();
+
+    // Propriedades para criação por nome
+    [JsonPropertyName("origem")]
+    public string? NomeEstadoOrigem { get; set; }
+    [JsonPropertyName("destino")]
+    public string? NomeEstadoDestino { get; set; }
 }
 
 public class AtualizarTransicaoDTO

@@ -36,12 +36,18 @@ namespace GestorWorkflow.Data.Models
         [StringLength(7)]
         public string? CorHexadecimal { get; set; }
 
+        [Column("workflow_modelo_id")]
+        public int WorkflowModeloId { get; set; }
+
         // Navegação
         [ForeignKey("TipoEstadoId")]
         public virtual TipoEstado? TipoEstado { get; set; }
 
         [ForeignKey("CriadoPorUtilizadorId")]
         public virtual Utilizador? CriadoPor { get; set; }
+
+        [ForeignKey("WorkflowModeloId")]
+        public virtual WorkflowModelo WorkflowModelo { get; set; }
 
         public virtual ICollection<WorkflowModelo> WorkflowModelos { get; set; } = new List<WorkflowModelo>();
         public virtual ICollection<WorkflowInstancia> WorkflowInstanciasAtivas { get; set; } = new List<WorkflowInstancia>();

@@ -25,7 +25,7 @@ namespace GestorWorkflow.Data.Mappers
             var workflowModelo = new WorkflowModeloEntity(
                 dataModel.WorkflowModeloId,
                 dataModel.Nome ?? throw new ArgumentNullException(nameof(dataModel.Nome)),
-                dataModel.EstadoInicialId,
+                dataModel.EstadoInicialId, // EstadoInicialId agora é int? (nullable)
                 dataModel.CriadoPorUtilizadorId
             );
 
@@ -117,13 +117,18 @@ namespace GestorWorkflow.Data.Mappers
                 Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
                 Descricao = domainModel.Descricao,
                 Versao = domainModel.Versao,
-                EstadoInicialId = domainModel.EstadoInicialId,
+                EstadoInicialId = domainModel.EstadoInicialId, // EstadoInicialId agora é int? (nullable)
                 Ativo = domainModel.Ativo,
                 DataCriacao = domainModel.DataCriacao,
                 DataUltimaAlteracao = domainModel.DataUltimaAlteracao,
                 CriadoPorUtilizadorId = domainModel.CriadoPorId,
                 AlteradoPorUtilizadorId = domainModel.AlteradoPorId
             };
+        }
+
+        public WorkflowModelo MapToDataModel(WorkflowModeloEntity domainModel, int workflowModeloId)
+        {
+            return MapToDataModel(domainModel);
         }
 
         public void MapToExistingDataModel(WorkflowModeloEntity domainModel, WorkflowModelo existingDataModel)

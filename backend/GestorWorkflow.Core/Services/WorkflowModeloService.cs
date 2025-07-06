@@ -26,52 +26,126 @@ public class WorkflowModeloService : IWorkflowModeloService
         if (await _unitOfWork.WorkflowModelos.ExisteNomeAsync(dto.Nome))
             throw new WorkflowModeloNomeJaExisteException(dto.Nome);
 
-        var novoId = await GerarProximoIdWorkflowModeloAsync();
-
-        // 1. Criar estados e guardar os IDs
-        var estadoIdMap = new Dictionary<int, int>(); // idx original -> id criado
-        int? estadoInicialId = null;
-        var estadosCriados = new List<EstadoEntity>();
-
-        for (int i = 0; i < dto.Estados.Count; i++)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            var estadoDto = dto.Estados[i];
-            var estadoEntity = new EstadoEntity(
-                0, // o ID será gerado pela BD
-                estadoDto.Nome,
-                estadoDto.Tipo,
-                estadoDto.CriadoPorId
-            );
-            estadoEntity.AtualizarDescricao(estadoDto.Descricao);
-            estadoEntity.DefinirCor(estadoDto.CorHexadecimal);
-
-            var estadoCriado = await _unitOfWork.Estados.CriarAsync(estadoEntity);
+            // 1. Cria o modelo primeiro (sem estados)
+            var novoId = await GerarProximoIdWorkflowModeloAsync();
+            var workflow = new WorkflowModeloEntity(novoId, dto.Nome, null, dto.CriadoPorId);
+            if (!string.IsNullOrEmpty(dto.Descricao))
+                workflow.AtualizarDescricao(dto.Descricao);
+            var workflowCriado = await _unitOfWork.WorkflowModelos.CriarAsync(workflow);
             await _unitOfWork.SaveChangesAsync();
-            estadoIdMap[i] = estadoCriado.Id;
-            estadosCriados.Add(estadoCriado);
 
-            if (estadoDto.IsInicial)
-                estadoInicialId = estadoCriado.Id;
+            // 2. Cria os estados, associando ao modelo criado
+            // Preenche nomeParaId com nomes normalizados (lowercase, trim)
+            var nomeParaId = new Dictionary<string, int>();
+            int? estadoInicialId = null;
+            var estadosCriados = new List<EstadoEntity>();
+            foreach (var estadoDto in dto.Estados)
+            {
+                var estadoEntity = new EstadoEntity(
+                    0,
+                    estadoDto.Nome,
+                    estadoDto.Tipo,
+                    estadoDto.CriadoPorId
+                );
+                estadoEntity.AtualizarDescricao(estadoDto.Descricao);
+                estadoEntity.DefinirCor(estadoDto.CorHexadecimal);
+                var estadoCriado = await _unitOfWork.CriarEstadoAsync(estadoEntity, workflowCriado.Id);
+                await _unitOfWork.SaveChangesAsync();
+                nomeParaId[estadoDto.Nome.Trim().ToLowerInvariant()] = estadoCriado.Id;
+                estadosCriados.Add(estadoCriado);
+                if (estadoDto.IsInicial)
+                    estadoInicialId = estadoCriado.Id;
+            }
+            if (estadoInicialId == null)
+                throw new Exception("Nenhum estado inicial definido.");
+
+            // 3. Atualiza o modelo para definir o EstadoInicialId
+            workflowCriado = new WorkflowModeloEntity(workflowCriado.Id, workflowCriado.Nome, estadoInicialId, workflowCriado.CriadoPorId);
+            if (!string.IsNullOrEmpty(dto.Descricao))
+                workflowCriado.AtualizarDescricao(dto.Descricao);
+            foreach (var estado in estadosCriados)
+                workflowCriado.AdicionarEstado(estado);
+            await _unitOfWork.WorkflowModelos.AtualizarAsync(workflowCriado);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 4. Cria as transições
+            if (dto.Transicoes != null)
+            {
+                foreach (var transicaoDto in dto.Transicoes)
+                {
+                    int origemId = 0, destinoId = 0;
+                    if (transicaoDto.EstadoOrigemId.HasValue && transicaoDto.EstadoOrigemId > 0)
+                        origemId = transicaoDto.EstadoOrigemId.Value;
+                    if (transicaoDto.EstadoDestinoId > 0)
+                        destinoId = transicaoDto.EstadoDestinoId;
+                    // Se vierem nomes, converte para IDs
+                    string? nomeOrigem = transicaoDto.NomeEstadoOrigem;
+                    string? nomeDestino = transicaoDto.NomeEstadoDestino;
+                    if (string.IsNullOrEmpty(nomeOrigem))
+                    {
+                        var prop = transicaoDto.GetType().GetProperty("origem", System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        if (prop != null)
+                            nomeOrigem = prop.GetValue(transicaoDto)?.ToString();
+                    }
+                    if (string.IsNullOrEmpty(nomeDestino))
+                    {
+                        var prop = transicaoDto.GetType().GetProperty("destino", System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        if (prop != null)
+                            nomeDestino = prop.GetValue(transicaoDto)?.ToString();
+                    }
+                    if (origemId == 0 && !string.IsNullOrEmpty(nomeOrigem))
+                    {
+                        var key = nomeOrigem.Trim().ToLowerInvariant();
+                        if (nomeParaId.ContainsKey(key))
+                            origemId = nomeParaId[key];
+                    }
+                    if (destinoId == 0 && !string.IsNullOrEmpty(nomeDestino))
+                    {
+                        var key = nomeDestino.Trim().ToLowerInvariant();
+                        if (nomeParaId.ContainsKey(key))
+                            destinoId = nomeParaId[key];
+                    }
+
+                    // Log para debug
+                    _logger.LogDebug($"nomeParaId: {string.Join(", ", nomeParaId.Select(kv => $"{kv.Key}={kv.Value}"))}");
+                    _logger.LogDebug($"Transição recebida: Origem='{transicaoDto.NomeEstadoOrigem}', Destino='{transicaoDto.NomeEstadoDestino}', origemId={origemId}, destinoId={destinoId}");
+
+                    var transicaoEntity = new TransicaoEntity(0, destinoId, origemId);
+                    if (!string.IsNullOrEmpty(transicaoDto.Nome))
+                        transicaoEntity.DefinirNome(transicaoDto.Nome);
+                    if (!string.IsNullOrEmpty(transicaoDto.Descricao))
+                        transicaoEntity.DefinirDescricao(transicaoDto.Descricao);
+                    if (transicaoDto.PreCondicaoId.HasValue)
+                        transicaoEntity.DefinirPreCondicao(transicaoDto.PreCondicaoId);
+                    if (transicaoDto.PosCondicaoId.HasValue)
+                        transicaoEntity.DefinirPosCondicao(transicaoDto.PosCondicaoId);
+                    if (transicaoDto.PermissoesIds != null)
+                    {
+                        foreach (var pid in transicaoDto.PermissoesIds)
+                            transicaoEntity.AdicionarPermissao(pid);
+                    }
+                    // Garante que o WorkflowModeloId está setado
+                    transicaoEntity.WorkflowModeloId = workflowCriado.Id;
+                    if (origemId == 0 || destinoId == 0)
+                        throw new Exception($"Transição inválida: origemId={origemId}, destinoId={destinoId}. Verifique se os nomes dos estados estão corretos e se todos os estados foram criados. Origem: '{transicaoDto.NomeEstadoOrigem}', Destino: '{transicaoDto.NomeEstadoDestino}'");
+                    await _unitOfWork.Transicoes.CriarAsync(transicaoEntity);
+                }
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            await _unitOfWork.CommitTransactionAsync();
+            _logger.LogInformation("Workflow modelo criado com sucesso: ID {Id}", workflowCriado.Id);
+            return await MapearParaWorkflowModeloDtoAsync(workflowCriado);
         }
-
-        if (estadoInicialId == null)
-            throw new Exception("Nenhum estado inicial definido.");
-
-        // 2. Criar o modelo de workflow com o estado inicial correto
-        var workflow = new WorkflowModeloEntity(novoId, dto.Nome, estadoInicialId.Value, dto.CriadoPorId);
-        if (!string.IsNullOrEmpty(dto.Descricao))
-            workflow.AtualizarDescricao(dto.Descricao);
-
-        // Associar estados ao modelo
-        foreach (var estado in estadosCriados)
-            workflow.AdicionarEstado(estado);
-
-        var workflowCriado = await _unitOfWork.WorkflowModelos.CriarAsync(workflow);
-        await _unitOfWork.SaveChangesAsync();
-
-        _logger.LogInformation("Workflow modelo criado com sucesso: ID {Id}", workflowCriado.Id);
-
-        return await MapearParaWorkflowModeloDtoAsync(workflowCriado);
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "Erro ao criar workflow modelo");
+            throw;
+        }
     }
 
     public async Task<WorkflowModeloDTO> ObterWorkflowModeloPorIdAsync(int id)
@@ -157,7 +231,6 @@ public class WorkflowModeloService : IWorkflowModeloService
 
     private async Task<WorkflowModeloDTO> MapearParaWorkflowModeloDtoAsync(WorkflowModeloEntity workflow)
     {
-
         var dto = new WorkflowModeloDTO
         {
             Id = workflow.Id,
@@ -179,8 +252,15 @@ public class WorkflowModeloService : IWorkflowModeloService
         foreach (var transicao in workflow.Transicoes) dto.Transicoes.Add(await MapearParaTransicaoDtoAsync(transicao, _unitOfWork));
 
         // Adicionar informações adicionais
-        var estadoInicial = await _unitOfWork.Estados.ObterPorIdAsync(workflow.EstadoInicialId);
-        dto.NomeEstadoInicial = estadoInicial?.Nome;
+        if (workflow.EstadoInicialId.HasValue)
+        {
+            var estadoInicial = await _unitOfWork.Estados.ObterPorIdAsync(workflow.EstadoInicialId.Value);
+            dto.NomeEstadoInicial = estadoInicial?.Nome;
+        }
+        else
+        {
+            dto.NomeEstadoInicial = null;
+        }
 
         if (workflow.CriadoPorId > 0)
         {

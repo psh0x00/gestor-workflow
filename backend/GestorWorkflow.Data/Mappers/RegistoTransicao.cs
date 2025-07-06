@@ -42,6 +42,11 @@ namespace GestorWorkflow.Data.Mappers
             };
         }
 
+        public TransicaoInstancia MapToDataModel(RegistoTransicaoEntity domainModel, int workflowModeloId)
+        {
+            return MapToDataModel(domainModel);
+        }
+
         public void MapToExistingDataModel(RegistoTransicaoEntity domainModel, TransicaoInstancia existingDataModel)
         {
             if (domainModel == null || existingDataModel == null) return;

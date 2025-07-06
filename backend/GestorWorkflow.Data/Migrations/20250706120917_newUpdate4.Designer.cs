@@ -4,6 +4,7 @@ using GestorWorkflow.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestorWorkflow.Data.Migrations
 {
     [DbContext(typeof(GestorWorkflowDbContext))]
-    partial class GestorWorkflowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250706120917_newUpdate4")]
+    partial class newUpdate4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -63,17 +66,11 @@ namespace GestorWorkflow.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("tipo_estado_id");
 
-                    b.Property<int>("WorkflowModeloId")
-                        .HasColumnType("int")
-                        .HasColumnName("workflow_modelo_id");
-
                     b.HasKey("EstadoModeloId");
 
                     b.HasIndex("CriadoPorUtilizadorId");
 
                     b.HasIndex("TipoEstadoId");
-
-                    b.HasIndex("WorkflowModeloId");
 
                     b.ToTable("EstadoModelo");
                 });
@@ -583,17 +580,9 @@ namespace GestorWorkflow.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GestorWorkflow.Data.Models.WorkflowModelo", "WorkflowModelo")
-                        .WithMany()
-                        .HasForeignKey("WorkflowModeloId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("CriadoPor");
 
                     b.Navigation("TipoEstado");
-
-                    b.Navigation("WorkflowModelo");
                 });
 
             modelBuilder.Entity("GestorWorkflow.Data.Models.Permissao", b =>

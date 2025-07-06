@@ -130,4 +130,13 @@ public class WorkflowModeloRepository : BaseRepository<WorkflowModelo>, IWorkflo
             Delete(workflowModelo);
         }
     }
+
+    public async Task AtualizarEstadoInicialAsync(int workflowModeloId, int estadoInicialId)
+    {
+        var workflowModelo = await _dbSet.FindAsync(workflowModeloId);
+        if (workflowModelo == null)
+            throw new InvalidOperationException($"WorkflowModelo with ID {workflowModeloId} not found.");
+        workflowModelo.EstadoInicialId = estadoInicialId;
+        _context.Update(workflowModelo);
+    }
 }

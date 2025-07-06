@@ -259,4 +259,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
             _disposed = true;
         }
     }
+
+    public async Task<EstadoEntity> CriarEstadoAsync(EstadoEntity estadoEntity, int workflowModeloId)
+        => await Estados.CriarAsync(estadoEntity, workflowModeloId);
 }

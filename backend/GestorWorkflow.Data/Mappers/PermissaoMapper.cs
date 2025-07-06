@@ -40,6 +40,11 @@ namespace GestorWorkflow.Data.Mappers
             };
         }
 
+        public Permissao MapToDataModel(PermissaoEntity domainModel, int workflowModeloId)
+        {
+            return MapToDataModel(domainModel);
+        }
+
         public void MapToExistingDataModel(PermissaoEntity domainModel, Permissao existingDataModel)
         {
             if (domainModel == null || existingDataModel == null) return;

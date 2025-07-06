@@ -57,14 +57,17 @@ public class WorkflowModeloController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(WorkflowModeloDTO), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<WorkflowModeloDTO>> Criar([FromBody] CriarWorkflowModeloDTO dto)
+    public async Task<ActionResult<WorkflowModeloDTO>> Criar([FromBody] dynamic payload)
     {
         try
         {
-            // O frontend NÃO deve enviar CriadoPorId. O backend irá preencher automaticamente com o utilizador autenticado.
+            // Serializa e loga o JSON recebido
+            string json = payload.ToString();
+            _logger.LogInformation("JSON recebido em Criar: {Json}", json);
 
-            // Log do JSON recebido
-            _logger.LogInformation("JSON recebido em Criar: {Json}", System.Text.Json.JsonSerializer.Serialize(dto));
+            // Desserializa para um objeto dinâmico para aceitar camelCase
+            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var dto = System.Text.Json.JsonSerializer.Deserialize<CriarWorkflowModeloDTO>(json, options);
 
             // Logar todas as claims recebidas para debug
             foreach (var claim in User.Claims)
@@ -72,14 +75,7 @@ public class WorkflowModeloController : ControllerBase
                 _logger.LogInformation($"Claim recebida: {claim.Type} = {claim.Value}");
             }
 
-            // Log extra: mostrar todos os claims recebidos
-            Console.WriteLine("--- Claims recebidas no backend ---");
-            foreach (var claim in User.Claims)
-            {
-                Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
-            }
-
-            // Obter o ID do utilizador autenticado (cobre todos os possíveis nomes de claim)
+            // Obter o ID do utilizador autenticado
             var userIdClaim = User.Claims.FirstOrDefault(c =>
                 c.Type == "sub" ||
                 c.Type == "userId" ||
@@ -92,15 +88,52 @@ public class WorkflowModeloController : ControllerBase
                 return Unauthorized("Utilizador não autenticado ou sem claim de ID.");
             }
 
-            // ATENÇÃO: O campo CriadoPorId enviado pelo frontend será SEMPRE ignorado.
-            // O valor será preenchido automaticamente com o ID do utilizador autenticado (claim JWT).
-            // Não é necessário (nem recomendado) enviar CriadoPorId no payload do frontend.
             dto.CriadoPorId = userId;
             if (dto.Estados != null)
             {
                 foreach (var estado in dto.Estados)
                 {
                     estado.CriadoPorId = userId;
+                }
+            }
+
+            // Se EstadoInicialId não vier, define pelo estado marcado como inicial
+            if (dto.EstadoInicialId == 0 && dto.Estados != null)
+            {
+                var inicial = dto.Estados.FirstOrDefault(e => e.IsInicial);
+                if (inicial != null)
+                {
+                    int idx = dto.Estados.IndexOf(inicial) + 1; // IDs temporários (1-based)
+                    dto.EstadoInicialId = idx;
+                }
+            }
+
+            // Mapeia nomes de estados para IDs temporários
+            var nomeParaId = new Dictionary<string, int>();
+            if (dto.Estados != null)
+            {
+                for (int i = 0; i < dto.Estados.Count; i++)
+                {
+                    nomeParaId[dto.Estados[i].Nome] = i + 1; // IDs temporários (1-based)
+                }
+            }
+            // Ajusta as transições se vierem com nomes
+            if (dto.Transicoes != null && dto.Transicoes.Count > 0)
+            {
+                foreach (var t in dto.Transicoes)
+                {
+                    if (t.EstadoOrigemId == 0 && t.GetType().GetProperty("Origem") != null)
+                    {
+                        var origem = t.GetType().GetProperty("Origem").GetValue(t)?.ToString();
+                        if (!string.IsNullOrEmpty(origem) && nomeParaId.ContainsKey(origem))
+                            t.EstadoOrigemId = nomeParaId[origem];
+                    }
+                    if (t.EstadoDestinoId == 0 && t.GetType().GetProperty("Destino") != null)
+                    {
+                        var destino = t.GetType().GetProperty("Destino").GetValue(t)?.ToString();
+                        if (!string.IsNullOrEmpty(destino) && nomeParaId.ContainsKey(destino))
+                            t.EstadoDestinoId = nomeParaId[destino];
+                    }
                 }
             }
 

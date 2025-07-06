@@ -49,6 +49,11 @@ namespace GestorWorkflow.Data.Mappers
             };
         }
 
+        public PosCondicao MapToDataModel(PosCondicaoEntity domainModel, int workflowModeloId)
+        {
+            return MapToDataModel(domainModel);
+        }
+
         public void MapToExistingDataModel(PosCondicaoEntity domainModel, PosCondicao existingDataModel)
         {
             if (domainModel == null || existingDataModel == null) return;

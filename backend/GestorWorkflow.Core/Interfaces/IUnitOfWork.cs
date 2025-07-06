@@ -1,3 +1,4 @@
+using GestorWorkflow.Core.Entities;
 namespace GestorWorkflow.Core.Interfaces;
 
 public interface IUnitOfWork : IDisposable
@@ -15,4 +16,5 @@ public interface IUnitOfWork : IDisposable
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
+    Task<EstadoEntity> CriarEstadoAsync(EstadoEntity estadoEntity, int workflowModeloId);
 }

@@ -68,20 +68,26 @@ namespace GestorWorkflow.Data.Mappers
             return new TransicaoModelo
             {
                 // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
-                Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome)),
+                Nome = domainModel.Nome, // Nome pode ser nulo
                 Descricao = domainModel.Descricao,
                 EstadoOrigemId = domainModel.EstadoOrigemId,
                 EstadoDestinoId = domainModel.EstadoDestinoId,
                 PreCondicaoId = domainModel.PreCondicaoId,
-                PosCondicaoId = domainModel.PosCondicaoId
+                PosCondicaoId = domainModel.PosCondicaoId,
+                WorkflowModeloId = domainModel.WorkflowModeloId // Garante o vínculo correto
             };
+        }
+
+        public TransicaoModelo MapToDataModel(TransicaoEntity domainModel, int workflowModeloId)
+        {
+            return MapToDataModel(domainModel);
         }
 
         public void MapToExistingDataModel(TransicaoEntity domainModel, TransicaoModelo existingDataModel)
         {
             if (domainModel == null || existingDataModel == null) return;
 
-            existingDataModel.Nome = domainModel.Nome ?? throw new ArgumentNullException(nameof(domainModel.Nome));
+            existingDataModel.Nome = domainModel.Nome; // Nome pode ser nulo
             existingDataModel.Descricao = domainModel.Descricao;
             existingDataModel.EstadoOrigemId = domainModel.EstadoOrigemId;
             existingDataModel.EstadoDestinoId = domainModel.EstadoDestinoId;

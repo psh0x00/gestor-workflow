@@ -6,7 +6,7 @@ public class WorkflowModeloDTO
     public string Nome { get; set; } = string.Empty;
     public string? Descricao { get; set; }
     public string Versao { get; set; } = string.Empty;
-    public int EstadoInicialId { get; set; }
+    public int? EstadoInicialId { get; set; }
     public bool Ativo { get; set; }
     public DateTime DataCriacao { get; set; }
     public DateTime? DataUltimaAlteracao { get; set; }

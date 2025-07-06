@@ -10,6 +10,7 @@ public class TransicaoEntity
     public int? PreCondicaoId { get; private set; }
     public int? PosCondicaoId { get; private set; }
     public List<int> PermissoesIds { get; private set; }
+    public int WorkflowModeloId { get; set; }
 
     public TransicaoEntity(int id, int estadoDestinoId, int? estadoOrigemId = null)
     {

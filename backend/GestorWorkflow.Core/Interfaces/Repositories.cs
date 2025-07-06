@@ -12,6 +12,7 @@ namespace GestorWorkflow.Core.Interfaces
         Task<IEnumerable<EstadoEntity>> ObterAtivosAsync();
         Task<IEnumerable<EstadoEntity>> ObterPorTipoAsync(TipoEstadoEntity tipo);
         Task<EstadoEntity> CriarAsync(EstadoEntity estadoEntity);
+        Task<EstadoEntity> CriarAsync(EstadoEntity estadoEntity, int workflowModeloId);
         Task<EstadoEntity> AtualizarAsync(EstadoEntity estadoEntity);
         Task<bool> ExisteAsync(int id);
         Task<bool> ExisteNomeAsync(string nome, int? excludeId = null);
@@ -45,6 +46,7 @@ namespace GestorWorkflow.Core.Interfaces
         Task<bool> ExisteAsync(int id);
         Task<bool> ExisteNomeAsync(string nome, int? excludeId = null);
         Task RemoverAsync(int id);
+        Task AtualizarEstadoInicialAsync(int workflowModeloId, int estadoInicialId);
     }
 
     // Interface para repositório de Workflow Instância
