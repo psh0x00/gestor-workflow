@@ -150,7 +150,7 @@ public class WorkflowModeloService : IWorkflowModeloService
 
     public async Task<WorkflowModeloDTO> ObterWorkflowModeloPorIdAsync(int id)
     {
-        var workflow = await _unitOfWork.WorkflowModelos.ObterPorIdAsync(id);
+        var workflow = await _unitOfWork.WorkflowModelos.ObterComDetalhesAsync(id);
         if (workflow == null)
             throw new WorkflowModeloNaoEncontradoException(id);
 

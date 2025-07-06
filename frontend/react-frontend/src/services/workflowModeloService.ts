@@ -13,3 +13,9 @@ export async function listarWorkflowModelos(token?: string) {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined
   });
 }
+
+export async function obterWorkflowModeloPorId(id: number, token?: string) {
+  return axios.get(`${API_URL}/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  });
+}

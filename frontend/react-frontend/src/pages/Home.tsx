@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import WorkflowModeloModal from '../components/WorkflowModeloModal';
+import WorkflowModeloViewModal from '../components/WorkflowModeloViewModal';
 import './Home.css';
-import { listarWorkflowModelos } from '../services/workflowModeloService';
+import { listarWorkflowModelos, obterWorkflowModeloPorId } from '../services/workflowModeloService';
 import { useAuth } from '../context/AuthContext';
 
 const Home: React.FC = () => {
@@ -13,6 +14,8 @@ const Home: React.FC = () => {
   const [loadingModelos, setLoadingModelos] = useState(true);
   const [erroModelos, setErroModelos] = useState<string | null>(null);
   const [workflowModalOpen, setWorkflowModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [modeloSelecionado, setModeloSelecionado] = useState<any | null>(null);
 
   useEffect(() => {
     async function fetchModelos() {
@@ -57,6 +60,19 @@ const Home: React.FC = () => {
     if (search && !m.nome.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  // Novo: busca detalhes completos ao abrir modal de visualização
+  const handleAbrirViewModal = async (modeloResumo: any) => {
+    setModeloSelecionado(null); // Limpa antes de buscar
+    setViewModalOpen(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await obterWorkflowModeloPorId(modeloResumo.id, token ?? undefined);
+      setModeloSelecionado(res.data);
+    } catch (err) {
+      setModeloSelecionado({ ...modeloResumo, erro: 'Erro ao buscar detalhes.' });
+    }
+  };
 
   return (
     <div className="home-bg">
@@ -109,6 +125,11 @@ const Home: React.FC = () => {
           onClose={() => setWorkflowModalOpen(false)}
           onSubmit={handleNovoModelo}
         />
+        <WorkflowModeloViewModal
+          isOpen={viewModalOpen}
+          onClose={() => setViewModalOpen(false)}
+          modelo={modeloSelecionado}
+        />
         <div className="modelos-lista">
           {loadingModelos ? (
             <p>A carregar modelos...</p>
@@ -134,7 +155,7 @@ const Home: React.FC = () => {
                 <div
                   key={m.id}
                   className={`modelo-card ${m.ativo ? 'ativo' : 'inativo'}`}
-                  onClick={() => alert(`Modelo selecionado: ${m.nome}`)}
+                  onClick={() => handleAbrirViewModal(m)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="modelo-card-header">
