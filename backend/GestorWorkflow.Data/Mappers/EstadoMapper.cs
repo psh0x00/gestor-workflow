@@ -3,6 +3,7 @@ using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Core.Enums;
 using GestorWorkflow.Data.Models;
 using System;
+using System.Text.Json;
 
 namespace GestorWorkflow.Data.Mappers
 {
@@ -30,12 +31,15 @@ namespace GestorWorkflow.Data.Mappers
 
             estado.AtualizarDescricao(dataModel.Descricao);
             estado.DefinirCor(dataModel.CorHexadecimal);
-            
             if (!dataModel.Ativo)
             {
                 estado.Desativar();
             }
-
+            // Desserializar Funcoes
+            if (!string.IsNullOrEmpty(dataModel.Funcoes))
+            {
+                try { estado.DefinirFuncoes(JsonSerializer.Deserialize<List<string>>(dataModel.Funcoes)); } catch { }
+            }
             return estado;
         }
 
@@ -58,7 +62,8 @@ namespace GestorWorkflow.Data.Mappers
                 Ativo = domainModel.Ativo,
                 DataCriacao = domainModel.DataCriacao,
                 CriadoPorUtilizadorId = domainModel.CriadoPorId,
-                WorkflowModeloId = workflowModeloId
+                WorkflowModeloId = workflowModeloId,
+                Funcoes = domainModel.Funcoes != null && domainModel.Funcoes.Count > 0 ? JsonSerializer.Serialize(domainModel.Funcoes) : null
             };
         }
 

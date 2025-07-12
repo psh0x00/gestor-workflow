@@ -4,6 +4,7 @@ using GestorWorkflow.Core.Enums;
 using GestorWorkflow.Core.Exceptions;
 using GestorWorkflow.Core.Interfaces;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using static GestorWorkflow.Core.Services.ServicesMappings;
 
 namespace GestorWorkflow.Core.Services;
@@ -31,7 +32,22 @@ public class WorkflowInstanciaService : IWorkflowInstanciaService
                 throw new WorkflowInstanciaInativaException(dto.WorkflowModeloId);
 
             var novoId = await GerarProximoIdWorkflowInstanciaAsync();
-            var instancia = new WorkflowInstanciaEntity(novoId, dto.WorkflowModeloId, dto.EstadoInicialId, dto.IniciadoPorId);
+
+            // Mapear equipa do DTO para entidade
+            var equipaEntidade = dto.Equipa?.Select(e => new EquipaAtribuicaoEntity
+            {
+                Funcao = e.Funcao,
+                UtilizadorId = e.UtilizadorId,
+                Confirmado = e.Confirmado
+            }).ToList() ?? new List<EquipaAtribuicaoEntity>();
+
+            var instancia = new WorkflowInstanciaEntity(
+                novoId,
+                dto.WorkflowModeloId,
+                dto.EstadoInicialId,
+                dto.IniciadoPorId,
+                equipaEntidade
+            );
 
             var instanciaCriada = await _unitOfWork.WorkflowInstancias.CriarAsync(instancia);
             await _unitOfWork.SaveChangesAsync();
@@ -227,4 +243,4 @@ public class WorkflowInstanciaService : IWorkflowInstanciaService
                     "Para concluir uma instância, use o método ExecutarTransicaoAsync");
         }
     }
-} 
+}

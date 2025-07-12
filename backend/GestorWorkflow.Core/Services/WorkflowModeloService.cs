@@ -52,6 +52,8 @@ public class WorkflowModeloService : IWorkflowModeloService
                 );
                 estadoEntity.AtualizarDescricao(estadoDto.Descricao);
                 estadoEntity.DefinirCor(estadoDto.CorHexadecimal);
+                if (estadoDto.Funcoes != null && estadoDto.Funcoes.Count > 0)
+                    estadoEntity.DefinirFuncoes(estadoDto.Funcoes);
                 var estadoCriado = await _unitOfWork.CriarEstadoAsync(estadoEntity, workflowCriado.Id);
                 await _unitOfWork.SaveChangesAsync();
                 nomeParaId[estadoDto.Nome.Trim().ToLowerInvariant()] = estadoCriado.Id;

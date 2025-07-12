@@ -5,6 +5,7 @@ public class UtilizadorDTO
     public int Id { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string Funcao { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public List<int> PermissoesIds { get; set; } = new();
 
     // Propriedades adicionais para melhor visualização

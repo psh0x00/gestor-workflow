@@ -11,11 +11,12 @@ public class WorkflowInstanciaEntity
         public DateTime DataInicio { get; private set; }
         public DateTime? DataFim { get; private set; }
         public int? IniciadoPorId { get; private set; }
+        public List<EquipaAtribuicaoEntity> Equipa { get; private set; } = new(); // NOVO: atribuições por função
 
         private readonly List<RegistoTransicaoEntity> _historicoTransicoes;
         public IReadOnlyList<RegistoTransicaoEntity> HistoricoTransicoes => _historicoTransicoes.AsReadOnly();
 
-        public WorkflowInstanciaEntity(int id, int workflowModeloId, int estadoInicialId, int? iniciadoPorId = null)
+        public WorkflowInstanciaEntity(int id, int workflowModeloId, int estadoInicialId, int? iniciadoPorId = null, List<EquipaAtribuicaoEntity>? equipa = null)
         {
             Id = id;
             WorkflowModeloId = workflowModeloId;
@@ -24,6 +25,7 @@ public class WorkflowInstanciaEntity
             DataInicio = DateTime.UtcNow;
             IniciadoPorId = iniciadoPorId;
             _historicoTransicoes = new List<RegistoTransicaoEntity>();
+            if (equipa != null) Equipa = equipa;
         }
 
         public void ExecutarTransicao(TransicaoEntity transicaoEntity, int? executadoPorId = null)

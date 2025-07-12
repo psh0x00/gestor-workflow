@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { WorkflowModelo } from '../types/workflow';
 import Modal from './Modal';
 import WorkflowPreview from './WorkflowPreview';
+import InstanciarWorkflowModal from './InstanciarWorkflowModal';
 import './Modal.css';
 
 interface WorkflowModeloViewModalProps {
@@ -12,6 +13,7 @@ interface WorkflowModeloViewModalProps {
 
 const WorkflowModeloViewModal: React.FC<WorkflowModeloViewModalProps> = ({ isOpen, onClose, modelo }) => {
   const [tab, setTab] = useState<'preview' | 'details'>('preview');
+  const [instanciarOpen, setInstanciarOpen] = useState(false);
   if (!modelo) return null;
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -36,12 +38,38 @@ const WorkflowModeloViewModal: React.FC<WorkflowModeloViewModalProps> = ({ isOpe
               >Details</button>
             </div>
           </div>
-          <div className="modal-body" style={{ minHeight: 120, padding: 0 }}>
+          <div className="modal-body" style={{ padding: 0, minHeight: 400, position: 'relative' }}>
             {tab === 'preview' && (
-              <div style={{ padding: 8 }}>
-                <WorkflowPreview modelo={{ ...modelo, nome: '' }} visualOnly />
-              </div>
+              <>
+                <div style={{ padding: 8, height: '400px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <WorkflowPreview modelo={{ ...modelo, nome: '' }} visualOnly />
+                </div>
+                <button
+                  className="novo-modelo-btn"
+                  style={{
+                    position: 'absolute',
+                    left: 850,
+                    bottom: -20,
+                    padding: '10px 24px',
+                    borderRadius: 6,
+                    zIndex: 10
+                  }}
+                  onClick={() => setInstanciarOpen(true)}
+                >Instanciar</button>
+              </>
             )}
+            <InstanciarWorkflowModal 
+              isOpen={instanciarOpen} 
+              onClose={() => setInstanciarOpen(false)} 
+              modeloId={typeof modelo.id === 'number' ? modelo.id : 0} 
+              funcoes={Array.from(new Set((modelo.estados || []).flatMap(e => e.funcoes || [])))}
+              estadoInicialId={(() => {
+                // Procura o estado inicial pelo tipo === 1 (ajuste se necessário)
+                const inicial = (modelo.estados || []).find(e => e.tipo === 1);
+                // Se o estado tiver id numérico, retorna, senão undefined
+                return inicial && typeof (inicial as any).id === 'number' ? (inicial as any).id : undefined;
+              })()}
+            />
             {tab === 'details' && (
               <>
                 <h3 style={{ marginLeft: 8, marginBottom: -10, marginTop: 50 }}>Descrição</h3>

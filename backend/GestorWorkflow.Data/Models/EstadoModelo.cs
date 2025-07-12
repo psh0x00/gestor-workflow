@@ -39,6 +39,9 @@ namespace GestorWorkflow.Data.Models
         [Column("workflow_modelo_id")]
         public int WorkflowModeloId { get; set; }
 
+        [Column("funcoes")]
+        public string? Funcoes { get; set; } // JSON serializado de funções
+
         // Navegação
         [ForeignKey("TipoEstadoId")]
         public virtual TipoEstado? TipoEstado { get; set; }

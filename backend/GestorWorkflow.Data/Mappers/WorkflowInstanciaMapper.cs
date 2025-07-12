@@ -3,6 +3,7 @@ using GestorWorkflow.Core.Enums;
 using GestorWorkflow.Core.Interfaces;
 using GestorWorkflow.Data.Models;
 using System.Reflection;
+using System.Text.Json;
 
 namespace GestorWorkflow.Data.Mappers
 {
@@ -26,11 +27,23 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (dataModel == null) return null;
 
+            // Deserializar equipa do JSON
+            List<EquipaAtribuicaoEntity> equipa = new();
+            if (!string.IsNullOrEmpty(dataModel.EquipaJson))
+            {
+                try
+                {
+                    equipa = JsonSerializer.Deserialize<List<EquipaAtribuicaoEntity>>(dataModel.EquipaJson) ?? new();
+                }
+                catch { }
+            }
+
             var workflowInstancia = new WorkflowInstanciaEntity(
                 dataModel.WorkflowInstanciaId,
                 dataModel.WorkflowModeloId,
                 dataModel.EstadoAtualId ?? 0,
-                dataModel.IniciadoPorUtilizadorId
+                dataModel.IniciadoPorUtilizadorId,
+                equipa
             );
 
             // Atualizar Status usando reflexão (já que o setter é private)
@@ -93,6 +106,13 @@ namespace GestorWorkflow.Data.Mappers
         {
             if (domainModel == null) return null;
 
+            // Serializar equipa para JSON
+            string equipaJson = null;
+            if (domainModel.Equipa != null && domainModel.Equipa.Count > 0)
+            {
+                equipaJson = JsonSerializer.Serialize(domainModel.Equipa);
+            }
+
             return new WorkflowInstancia
             {
                 // Não definimos o ID aqui pois será gerado automaticamente pelo banco de dados
@@ -101,7 +121,8 @@ namespace GestorWorkflow.Data.Mappers
                 EstadoAtualId = domainModel.EstadoAtualId,
                 DataInicio = domainModel.DataInicio,
                 DataFim = domainModel.DataFim,
-                IniciadoPorUtilizadorId = domainModel.IniciadoPorId
+                IniciadoPorUtilizadorId = domainModel.IniciadoPorId,
+                EquipaJson = equipaJson
             };
         }
 

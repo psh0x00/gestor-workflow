@@ -10,22 +10,19 @@ const CARD_WIDTH = 160;
 const CARD_HEIGHT = 80;
 const CARD_GAP = 60;
 
-const WorkflowPreview: React.FC<WorkflowPreviewProps> = ({ modelo, visualOnly }) => {
+const WorkflowPreview: React.FC<WorkflowPreviewProps> = ({ modelo, visualOnly = false }) => {
   if (visualOnly) {
     // Layout: estados em linha, transições como curvas (bezier) tracejadas e animadas
     const estados = modelo.estados || [];
     const transicoes = modelo.transicoes || [];
     return (
       <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
+        position: 'relative',
         minHeight: CARD_HEIGHT + 80,
-        minWidth: estados.length * (CARD_WIDTH + CARD_GAP),
-        display: 'block',
-        width: 'fit-content',
-        maxWidth: '100%'
+        width: estados.length * (CARD_WIDTH + CARD_GAP),
+        maxWidth: '100%',
+        overflow: 'visible',
+        height: CARD_HEIGHT + 120
       }}>
         <style>{`
           @keyframes dashmove {

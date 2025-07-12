@@ -4,6 +4,7 @@ using GestorWorkflow.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestorWorkflow.Data.Migrations
 {
     [DbContext(typeof(GestorWorkflowDbContext))]
-    partial class GestorWorkflowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250707144141_newUpdate6")]
+    partial class newUpdate6
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,10 +55,6 @@ namespace GestorWorkflow.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("descricao");
-
-                    b.Property<string>("Funcoes")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("funcoes");
 
                     b.Property<string>("Nome")
                         .IsRequired()

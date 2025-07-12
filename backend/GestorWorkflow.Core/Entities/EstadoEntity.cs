@@ -12,6 +12,7 @@ public class EstadoEntity
     public bool Ativo { get; private set; }
     public DateTime DataCriacao { get; private set; }
     public int? CriadoPorId { get; private set; }
+    public List<string> Funcoes { get; private set; } = new();
 
     public EstadoEntity(int id, string nome, TipoEstadoEntity tipo, int? criadoPorId = null)
     {
@@ -25,7 +26,6 @@ public class EstadoEntity
         DataCriacao = DateTime.UtcNow;
         CriadoPorId = criadoPorId;
     }
-
 
     public void AtualizarDescricao(string? descricao)
     {
@@ -48,6 +48,11 @@ public class EstadoEntity
     public void Ativar()
     {
         Ativo = true;
+    }
+
+    public void DefinirFuncoes(List<string> funcoes)
+    {
+        Funcoes = funcoes ?? new List<string>();
     }
 
     public bool EhEstadoInicial() => Tipo == TipoEstadoEntity.Inicial;

@@ -29,6 +29,9 @@ namespace GestorWorkflow.Data.Models
         [Column("iniciado_por_utilizador_id")]
         public int? IniciadoPorUtilizadorId { get; set; }
 
+        [Column("equipa_json")]
+        public string? EquipaJson { get; set; }
+
         // Navegação
         [ForeignKey("WorkflowModeloId")]
         public virtual WorkflowModelo? WorkflowModelo { get; set; }

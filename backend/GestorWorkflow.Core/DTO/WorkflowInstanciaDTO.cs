@@ -26,6 +26,7 @@ public class CriarWorkflowInstanciaDTO
     public int WorkflowModeloId { get; set; }
     public int EstadoInicialId { get; set; }
     public int? IniciadoPorId { get; set; }
+    public List<EquipaAtribuicaoDTO>? Equipa { get; set; } // NOVO: atribuições por função
 }
 
 public class AtualizarWorkflowInstanciaDTO

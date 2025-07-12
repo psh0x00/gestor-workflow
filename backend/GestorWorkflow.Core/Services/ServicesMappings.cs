@@ -17,7 +17,8 @@ public static class ServicesMappings
             CorHexadecimal = estado.CorHexadecimal,
             Ativo = estado.Ativo,
             DataCriacao = estado.DataCriacao,
-            CriadoPorId = estado.CriadoPorId
+            CriadoPorId = estado.CriadoPorId,
+            Funcoes = estado.Funcoes ?? new List<string>()
         };
     }
 

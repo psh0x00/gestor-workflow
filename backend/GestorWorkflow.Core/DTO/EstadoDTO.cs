@@ -12,6 +12,7 @@ public class EstadoDTO
     public bool Ativo { get; set; }
     public DateTime DataCriacao { get; set; }
     public int? CriadoPorId { get; set; }
+    public List<string> Funcoes { get; set; } = new();
 }
 
 public class CriarEstadoDTO
@@ -23,6 +24,7 @@ public class CriarEstadoDTO
     public int? CriadoPorId { get; set; }
     public bool IsInicial { get; set; }
     public bool IsFinal { get; set; }
+    public List<string> Funcoes { get; set; } = new();
 }
 
 public class AtualizarEstadoDTO
@@ -31,4 +33,5 @@ public class AtualizarEstadoDTO
     public string? Descricao { get; set; }
     public string? CorHexadecimal { get; set; }
     public bool? Ativo { get; set; }
+    public List<string>? Funcoes { get; set; }
 }
