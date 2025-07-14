@@ -35,6 +35,10 @@ public class CriarTransicaoDTO
     public string? NomeEstadoOrigem { get; set; }
     [JsonPropertyName("destino")]
     public string? NomeEstadoDestino { get; set; }
+
+    // Propriedades para criação de condições
+    public string? NomePreCondicao { get; set; }
+    public string? NomePosCondicao { get; set; }
 }
 
 public class AtualizarTransicaoDTO

@@ -54,6 +54,11 @@ public class WorkflowModeloService : IWorkflowModeloService
                 estadoEntity.DefinirCor(estadoDto.CorHexadecimal);
                 if (estadoDto.Funcoes != null && estadoDto.Funcoes.Count > 0)
                     estadoEntity.DefinirFuncoes(estadoDto.Funcoes);
+                // Preencher condições do estado
+                if (!string.IsNullOrWhiteSpace(estadoDto.PreCondicao))
+                    estadoEntity.DefinirPreCondicao(estadoDto.PreCondicao);
+                if (!string.IsNullOrWhiteSpace(estadoDto.PosCondicao))
+                    estadoEntity.DefinirPosCondicao(estadoDto.PosCondicao);
                 var estadoCriado = await _unitOfWork.CriarEstadoAsync(estadoEntity, workflowCriado.Id);
                 await _unitOfWork.SaveChangesAsync();
                 nomeParaId[estadoDto.Nome.Trim().ToLowerInvariant()] = estadoCriado.Id;
@@ -63,6 +68,34 @@ public class WorkflowModeloService : IWorkflowModeloService
             }
             if (estadoInicialId == null)
                 throw new Exception("Nenhum estado inicial definido.");
+
+            // NOVO: Criar todas as pré e pós-condições dos estados antes das transições
+            var preCondicaoRepo = _unitOfWork.PreCondicoes;
+            var posCondicaoRepo = _unitOfWork.PosCondicoes;
+            foreach (var estadoDto in dto.Estados)
+            {
+                // Sempre verifica e cria na tabela correta, mesmo que já exista na outra
+                if (!string.IsNullOrWhiteSpace(estadoDto.PreCondicao))
+                {
+                    var existePre = await preCondicaoRepo.ExisteNomeAsync(estadoDto.PreCondicao);
+                    if (!existePre)
+                    {
+                        var preCond = new PreCondicaoEntity(0, estadoDto.PreCondicao, dto.CriadoPorId);
+                        await preCondicaoRepo.CriarAsync(preCond);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(estadoDto.PosCondicao))
+                {
+                    var existePos = await posCondicaoRepo.ExisteNomeAsync(estadoDto.PosCondicao);
+                    if (!existePos)
+                    {
+                        var posCond = new PosCondicaoEntity(0, estadoDto.PosCondicao, dto.CriadoPorId);
+                        await posCondicaoRepo.CriarAsync(posCond);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
 
             // 3. Atualiza o modelo para definir o EstadoInicialId
             workflowCriado = new WorkflowModeloEntity(workflowCriado.Id, workflowCriado.Nome, estadoInicialId, workflowCriado.CriadoPorId);
@@ -109,6 +142,48 @@ public class WorkflowModeloService : IWorkflowModeloService
                         var key = nomeDestino.Trim().ToLowerInvariant();
                         if (nomeParaId.ContainsKey(key))
                             destinoId = nomeParaId[key];
+                    }
+
+                    // NOVO: Criar ou obter PreCondicao
+                    if (string.IsNullOrWhiteSpace(transicaoDto.NomePreCondicao) == false)
+                    {
+                        var preCondicaoRepoTrans = _unitOfWork.PreCondicoes;
+                        var preCondicaoExiste = await preCondicaoRepoTrans.ExisteNomeAsync(transicaoDto.NomePreCondicao);
+                        if (!preCondicaoExiste)
+                        {
+                            var preCondicaoEntity = new PreCondicaoEntity(0, transicaoDto.NomePreCondicao, dto.CriadoPorId);
+                            var preCondicaoCriada = await preCondicaoRepoTrans.CriarAsync(preCondicaoEntity);
+                            if (!transicaoDto.PreCondicaoId.HasValue)
+                                transicaoDto.PreCondicaoId = preCondicaoCriada.Id;
+                        }
+                        else
+                        {
+                            var preCondicoes = await preCondicaoRepoTrans.ObterTodosAsync();
+                            var preCondicao = preCondicoes.FirstOrDefault(p => p.Nome == transicaoDto.NomePreCondicao);
+                            if (preCondicao != null && !transicaoDto.PreCondicaoId.HasValue)
+                                transicaoDto.PreCondicaoId = preCondicao.Id;
+                        }
+                    }
+
+                    // NOVO: Criar ou obter PosCondicao
+                    if (string.IsNullOrWhiteSpace(transicaoDto.NomePosCondicao) == false)
+                    {
+                        var posCondicaoRepoTrans = _unitOfWork.PosCondicoes;
+                        var posCondicaoExiste = await posCondicaoRepoTrans.ExisteNomeAsync(transicaoDto.NomePosCondicao);
+                        if (!posCondicaoExiste)
+                        {
+                            var posCondicaoEntity = new PosCondicaoEntity(0, transicaoDto.NomePosCondicao, dto.CriadoPorId);
+                            var posCondicaoCriada = await posCondicaoRepoTrans.CriarAsync(posCondicaoEntity);
+                            if (!transicaoDto.PosCondicaoId.HasValue)
+                                transicaoDto.PosCondicaoId = posCondicaoCriada.Id;
+                        }
+                        else
+                        {
+                            var posCondicoes = await posCondicaoRepoTrans.ObterTodosAsync();
+                            var posCondicao = posCondicoes.FirstOrDefault(p => p.Nome == transicaoDto.NomePosCondicao);
+                            if (posCondicao != null && !transicaoDto.PosCondicaoId.HasValue)
+                                transicaoDto.PosCondicaoId = posCondicao.Id;
+                        }
                     }
 
                     // Log para debug
@@ -247,8 +322,15 @@ public class WorkflowModeloService : IWorkflowModeloService
             AlteradoPorId = workflow.AlteradoPorId
         };
 
+
         // Mapear estados
         foreach (var estado in workflow.Estados) dto.Estados.Add(MapearParaEstadoDto(estado));
+
+        // Buscar última pré e pós-condição dos estados do modelo
+        var preConds = dto.Estados.Select(e => e.PreCondicao).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        var posConds = dto.Estados.Select(e => e.PosCondicao).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        dto.UltimaPreCondicao = preConds.Count > 0 ? preConds[preConds.Count - 1] : null;
+        dto.UltimaPosCondicao = posConds.Count > 0 ? posConds[posConds.Count - 1] : null;
 
         // Mapear transições
         foreach (var transicao in workflow.Transicoes) dto.Transicoes.Add(await MapearParaTransicaoDtoAsync(transicao, _unitOfWork));

@@ -32,6 +32,9 @@ namespace GestorWorkflow.Data.Models
         [Column("equipa_json")]
         public string? EquipaJson { get; set; }
 
+        [Column("estados_concluidos_json")]
+        public string? EstadosConcluidosJson { get; set; }
+
         // Navegação
         [ForeignKey("WorkflowModeloId")]
         public virtual WorkflowModelo? WorkflowModelo { get; set; }

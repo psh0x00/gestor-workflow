@@ -37,6 +37,15 @@ public class TransicaoService : ITransicaoService
                     throw new EstadoNaoEncontradoException(dto.EstadoOrigemId.Value);
             }
 
+            // Criar pré-condição se nome fornecido e id não
+            if (!dto.PreCondicaoId.HasValue && !string.IsNullOrWhiteSpace(dto.NomePreCondicao))
+            {
+                var novoIdPre = (await _unitOfWork.PreCondicoes.ObterTodosAsync()).OrderByDescending(p => p.Id).FirstOrDefault()?.Id ?? 0;
+                var preCondicao = new PreCondicaoEntity(novoIdPre + 1, dto.NomePreCondicao);
+                var preCondicaoCriada = await _unitOfWork.PreCondicoes.CriarAsync(preCondicao);
+                await _unitOfWork.SaveChangesAsync();
+                dto.PreCondicaoId = preCondicaoCriada.Id;
+            }
             // Validar pré-condição se fornecida
             if (dto.PreCondicaoId.HasValue)
             {
@@ -45,6 +54,15 @@ public class TransicaoService : ITransicaoService
                     throw new CondicaoNaoEncontradaException(dto.PreCondicaoId.Value, "Pré-condição");
             }
 
+            // Criar pós-condição se nome fornecido e id não
+            if (!dto.PosCondicaoId.HasValue && !string.IsNullOrWhiteSpace(dto.NomePosCondicao))
+            {
+                var novoIdPos = (await _unitOfWork.PosCondicoes.ObterTodosAsync()).OrderByDescending(p => p.Id).FirstOrDefault()?.Id ?? 0;
+                var posCondicao = new PosCondicaoEntity(novoIdPos + 1, dto.NomePosCondicao);
+                var posCondicaoCriada = await _unitOfWork.PosCondicoes.CriarAsync(posCondicao);
+                await _unitOfWork.SaveChangesAsync();
+                dto.PosCondicaoId = posCondicaoCriada.Id;
+            }
             // Validar pós-condição se fornecida
             if (dto.PosCondicaoId.HasValue)
             {

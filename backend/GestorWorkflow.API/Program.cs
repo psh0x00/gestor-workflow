@@ -40,6 +40,34 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
+    // JWT Auth no Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header usando o esquema Bearer. Exemplo: 'Bearer {token}'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement()
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+
     // Set the comments path for the Swagger JSON and UI
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -118,16 +146,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configuração de pipeline
-if (app.Environment.IsDevelopment())
+
+// Swagger sempre disponível
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gestor Workflow API V1");
-        c.RoutePrefix = string.Empty; // To serve the Swagger UI at the app's root
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gestor Workflow API V1");
+    c.RoutePrefix = string.Empty; // To serve the Swagger UI at the app's root
+});
 
 app.UseHttpsRedirection();
 app.UseRouting();

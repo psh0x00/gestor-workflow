@@ -4,13 +4,15 @@ import { Estado, Transicao, WorkflowModelo } from '../types/workflow';
 interface WorkflowPreviewProps {
   modelo: WorkflowModelo;
   visualOnly?: boolean;
+  onEstadoClick?: (estado: Estado) => void;
+  estadosConcluidos?: Array<number|string>;
 }
 
 const CARD_WIDTH = 160;
 const CARD_HEIGHT = 80;
 const CARD_GAP = 60;
 
-const WorkflowPreview: React.FC<WorkflowPreviewProps> = ({ modelo, visualOnly = false }) => {
+const WorkflowPreview: React.FC<WorkflowPreviewProps> = ({ modelo, visualOnly = false, onEstadoClick, estadosConcluidos = [] }) => {
   if (visualOnly) {
     // Layout: estados em linha, transições como curvas (bezier) tracejadas e animadas
     const estados = modelo.estados || [];
@@ -33,29 +35,51 @@ const WorkflowPreview: React.FC<WorkflowPreviewProps> = ({ modelo, visualOnly = 
         `}</style>
         {/* Estados em linha */}
         {estados.map((estado, idx) => (
-          <div key={idx} style={{
-            position: 'absolute',
-            left: idx * (CARD_WIDTH + CARD_GAP),
-            top: 60,
-            width: CARD_WIDTH,
-            height: CARD_HEIGHT,
-            background: '#fff',
-            border: `2px solid ${estado.corHexadecimal || '#bbb'}`,
-            borderRadius: 12,
-            boxShadow: '0 2px 8px #0001',
-            textAlign: 'center',
-            zIndex: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <div style={{ fontWeight: 600, color: estado.corHexadecimal || '#333', fontSize: 16 }}>{estado.nome}</div>
-            {estado.tipo && (
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                {typeof estado.tipo === 'number' ? (estado.tipo === 1 ? 'Inicial' : estado.tipo === 3 ? 'Final' : 'Intermédio') : estado.tipo}
-              </div>
-            )}
+          <div
+            key={idx}
+            style={{
+              position: 'absolute',
+              left: idx * (CARD_WIDTH + CARD_GAP),
+              top: 60,
+              width: CARD_WIDTH,
+              height: CARD_HEIGHT,
+              background: '#fff',
+              border: `2px solid ${estado.corHexadecimal || '#bbb'}`,
+              borderRadius: 12,
+              boxShadow: '0 2px 8px #0001',
+              textAlign: 'center',
+              zIndex: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: onEstadoClick ? 'pointer' : 'default',
+            }}
+            onClick={onEstadoClick ? () => onEstadoClick(estado) : undefined}
+          >
+            <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontWeight: 600, color: estado.corHexadecimal || '#333', fontSize: 16, textAlign: 'center' }}>{estado.nome}</div>
+              {estado.tipo && (
+                <div style={{ fontSize: 12, color: '#888', marginTop: 2, textAlign: 'center' }}>
+                  {typeof estado.tipo === 'number' ? (estado.tipo === 1 ? 'Inicial' : estado.tipo === 3 ? 'Final' : 'Intermédio') : estado.tipo}
+                </div>
+              )}
+              {/* O visto será renderizado fora do cartão, absolutamente posicionado abaixo */}
+              {(estadosConcluidos.includes((estado as any).id) || estadosConcluidos.includes(estado.nome)) && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: CARD_HEIGHT + 10, // 10px abaixo do cartão
+                    transform: 'translateX(-50%)',
+                    color: 'green',
+                    fontSize: 32,
+                    zIndex: 3,
+                    pointerEvents: 'none',
+                  }}
+                >✔️</span>
+              )}
+            </div>
           </div>
         ))}
         {/* Ligações SVG curvas (bezier) tracejadas e animadas */}

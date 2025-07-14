@@ -10,7 +10,11 @@ public class WorkflowInstanciaDTO
     public int? EstadoAtualId { get; set; }
     public DateTime DataInicio { get; set; }
     public DateTime? DataFim { get; set; }
+
     public int? IniciadoPorId { get; set; }
+
+    // Estados concluídos da instância
+    public List<int> EstadosConcluidos { get; set; } = new();
 
     public List<RegistoTransicaoDTO> HistoricoTransicoes { get; set; } = new();
 

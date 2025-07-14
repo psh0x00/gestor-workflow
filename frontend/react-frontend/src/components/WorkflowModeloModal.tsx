@@ -1,25 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import EstadoFuncoesModal from './EstadoFuncoesModal';
 import './Modal.css';
 import { criarWorkflowModelo } from '../services/workflowModeloService';
+import { listarCondicoes, criarCondicao } from '../services/condicaoService';
 
 interface Estado {
   nome: string;
   descricao?: string;
   preCondicao?: string;
   posCondicao?: string;
+  preCondicaoId?: number;
+  posCondicaoId?: number;
 }
 
 interface EstadoComTipo extends Estado {
   tipo: 'inicial' | 'final' | 'intermedio';
   corHexadecimal: string;
   funcoes: string[];
+  preCondicao?: string;
+  posCondicao?: string;
 }
 
 interface Transicao {
   origem: string;
   destino: string;
+  preCondicaoId?: number;
+  posCondicaoId?: number;
 }
 
 interface WorkflowModeloModalProps {
@@ -38,7 +45,30 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [estados, setEstados] = useState<Estado[]>([]);
-  const [novoEstado, setNovoEstado] = useState<Estado>({ nome: '', descricao: '', preCondicao: '', posCondicao: '' });
+  const [novoEstado, setNovoEstado] = useState<Estado>({ nome: '', descricao: '', preCondicao: '', posCondicao: '', preCondicaoId: undefined, posCondicaoId: undefined });
+// Condições criadas localmente: { id, nome, tipo }
+  const [condicoes, setCondicoes] = useState<{ id: number, nome: string, tipo: 'pre' | 'pos' }[]>([]);
+  // Buscar condições do backend ao abrir modal
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCondicoes = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await listarCondicoes(token ?? undefined);
+          // Supondo que o backend retorna [{id, nome, tipo}] ou [{id, nome, ...}],
+          // se não retornar o tipo, não é possível distinguir, então inicialize vazio
+          if (Array.isArray(res.data) && res.data.length > 0 && res.data[0].tipo) {
+            setCondicoes(res.data);
+          } else {
+            setCondicoes([]); // Não há distinção, melhor não assumir
+          }
+        } catch (e) {
+          setCondicoes([]);
+        }
+      };
+      fetchCondicoes();
+    }
+  }, [isOpen]);
   const [funcoes, setFuncoes] = useState<string[]>([]);
   const [novaFuncao, setNovaFuncao] = useState('');
   const [estadoInicialIdx, setEstadoInicialIdx] = useState<number | null>(null);
@@ -50,10 +80,70 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
   const [transicoes, setTransicoes] = useState<Transicao[]>([]);
   const [novaTransicao, setNovaTransicao] = useState<Transicao>({ origem: '', destino: '' });
 
-  const adicionarEstado = () => {
+  const adicionarEstado = async () => {
     if (novoEstado.nome.trim() !== '') {
-      setEstados([...estados, novoEstado]);
-      setNovoEstado({ nome: '', descricao: '', preCondicao: '', posCondicao: '' });
+      const token = localStorage.getItem('token');
+      let preCondId: number | undefined = undefined;
+      let posCondId: number | undefined = undefined;
+
+      // Pré-condição
+      if (novoEstado.preCondicao && novoEstado.preCondicao.trim() !== '') {
+        console.log('Tentando criar pré-condição:', novoEstado.preCondicao);
+        let existente = condicoes.find(c => c.nome === novoEstado.preCondicao && c.tipo === 'pre');
+        if (!existente) {
+          try {
+            const res = await criarCondicao(novoEstado.preCondicao, 'pre', token ?? undefined);
+            console.log('PreCondicao criada:', res.data);
+            preCondId = res.data.id ?? res.data.Id;
+            if (preCondId === undefined) {
+              alert('Erro: ID da pré-condição não retornado pelo backend!');
+            } else {
+              setCondicoes(prev => ([...prev, { id: preCondId as number, nome: String(res.data.nome), tipo: 'pre' as 'pre' }]));
+            }
+          } catch (err) {
+            alert('Erro ao criar pré-condição!');
+            preCondId = undefined;
+          }
+        } else {
+          preCondId = existente.id;
+        }
+      }
+
+      // Pós-condição
+      if (novoEstado.posCondicao && novoEstado.posCondicao.trim() !== '') {
+        console.log('Tentando criar pós-condição:', novoEstado.posCondicao);
+        let existente = condicoes.find(c => c.nome === novoEstado.posCondicao && c.tipo === 'pos');
+        if (!existente) {
+          try {
+            const res = await criarCondicao(novoEstado.posCondicao, 'pos', token ?? undefined);
+            console.log('PosCondicao criada:', res.data);
+            posCondId = res.data.id ?? res.data.Id;
+            if (posCondId === undefined) {
+              alert('Erro: ID da pós-condição não retornado pelo backend!');
+            } else {
+              setCondicoes(prev => ([...prev, { id: posCondId as number, nome: String(res.data.nome), tipo: 'pos' as 'pos' }]));
+            }
+          } catch (err) {
+            alert('Erro ao criar pós-condição!');
+            posCondId = undefined;
+          }
+        } else {
+          posCondId = existente.id;
+        }
+      }
+
+      // Adicione o estado imediatamente com os IDs obtidos diretamente das respostas
+      setEstados(prevEstados => ([
+        ...prevEstados,
+        {
+          ...novoEstado,
+          preCondicao: typeof novoEstado.preCondicao === 'string' ? novoEstado.preCondicao : '',
+          posCondicao: typeof novoEstado.posCondicao === 'string' ? novoEstado.posCondicao : '',
+          preCondicaoId: preCondId,
+          posCondicaoId: posCondId
+        }
+      ]));
+      setNovoEstado({ nome: '', descricao: '', preCondicao: '', posCondicao: '', preCondicaoId: undefined, posCondicaoId: undefined });
     }
   };
 
@@ -80,9 +170,26 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
     setFuncoesPorEstado(prev => ({ ...prev, [idx]: funcoesSelecionadas }));
   };
 
-  const adicionarTransicao = () => {
+  // Flag para evitar duplo clique rápido
+  const [adicionandoTransicao, setAdicionandoTransicao] = useState(false);
+  const adicionarTransicao = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) e.preventDefault(); // nunca deixa disparar submit
+    if (adicionandoTransicao) return;
+    setAdicionandoTransicao(true);
+    setTimeout(() => setAdicionandoTransicao(false), 300); // proteção debounce
+    console.log('AdicionarTransicao chamado', novaTransicao);
     if (novaTransicao.origem && novaTransicao.destino && novaTransicao.origem !== novaTransicao.destino) {
-      setTransicoes([...transicoes, { ...novaTransicao }]);
+      const estadoOrigem = estados.find(e => e.nome === novaTransicao.origem);
+      const estadoDestino = estados.find(e => e.nome === novaTransicao.destino);
+      setTransicoes(prevTransicoes => ([
+        ...prevTransicoes,
+        {
+          origem: novaTransicao.origem,
+          destino: novaTransicao.destino,
+          preCondicaoId: estadoOrigem?.preCondicaoId,
+          posCondicaoId: estadoDestino?.posCondicaoId
+        }
+      ]));
       setNovaTransicao({ origem: '', destino: '' });
     }
   };
@@ -118,6 +225,7 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
       });
 
       // Mapear para DTO do backend (sem estadoInicialId e sem criadoPorId)
+      // Use sempre o array de estadosComTipo atualizado para garantir que os IDs estão corretos
       const criarWorkflowModeloDTO = {
         nome,
         descricao,
@@ -128,14 +236,28 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
           corHexadecimal: e.corHexadecimal,
           funcoes: e.funcoes,
           isInicial: e.isInicial,
-          isFinal: e.isFinal
+          isFinal: e.isFinal,
+          preCondicao: e.preCondicao ?? '',
+          posCondicao: e.posCondicao ?? ''
         })),
-        transicoes: transicoes.map(t => ({
-          origem: t.origem,
-          destino: t.destino
-        }))
+        transicoes: transicoes.map(t => {
+          // Associar sempre as condições do estado de origem
+          const estadoOrigem = estadosComTipo.find(e => e.nome === t.origem);
+          return {
+            origem: t.origem,
+            destino: t.destino,
+            preCondicaoId: estadoOrigem?.preCondicaoId ?? null,
+            posCondicaoId: estadoOrigem?.posCondicaoId ?? null,
+            nomePreCondicao: estadoOrigem?.preCondicao ?? null,
+            nomePosCondicao: estadoOrigem?.posCondicao ?? null
+          };
+        })
       };
       try {
+        // Logs para depuração de IDs de condições e payload final
+        console.log('Condicoes:', condicoes);
+        console.log('Estados:', estados);
+        console.log('Payload enviado para criar modelo:', criarWorkflowModeloDTO);
         // Obter token JWT do localStorage/sessionStorage/cookie conforme sua implementação
         const token = localStorage.getItem('token');
         await criarWorkflowModelo(criarWorkflowModeloDTO, token ?? undefined);
@@ -317,14 +439,14 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
           <input
             className="input-padrao"
             placeholder="Pré-condição"
-            value={novoEstado.preCondicao}
+            value={novoEstado.preCondicao || ''}
             onChange={e => setNovoEstado({ ...novoEstado, preCondicao: e.target.value })}
             style={{ flex: 2, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
           />
           <input
             className="input-padrao"
             placeholder="Pós-condição"
-            value={novoEstado.posCondicao}
+            value={novoEstado.posCondicao || ''}
             onChange={e => setNovoEstado({ ...novoEstado, posCondicao: e.target.value })}
             style={{ flex: 2, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
           />
@@ -384,6 +506,7 @@ const WorkflowModeloModal: React.FC<WorkflowModeloModalProps> = ({ isOpen, onClo
             className="novo-modelo-btn"
             onClick={adicionarTransicao}
             style={{ padding: '8px 12px', borderRadius: 6 }}
+            disabled={adicionandoTransicao}
           >
             Adicionar Transição
           </button>

@@ -13,6 +13,10 @@ public class EstadoDTO
     public DateTime DataCriacao { get; set; }
     public int? CriadoPorId { get; set; }
     public List<string> Funcoes { get; set; } = new();
+
+    // Novas propriedades para expor condições
+    public string? PreCondicao { get; set; }
+    public string? PosCondicao { get; set; }
 }
 
 public class CriarEstadoDTO
@@ -25,6 +29,8 @@ public class CriarEstadoDTO
     public bool IsInicial { get; set; }
     public bool IsFinal { get; set; }
     public List<string> Funcoes { get; set; } = new();
+    public string? PreCondicao { get; set; }
+    public string? PosCondicao { get; set; }
 }
 
 public class AtualizarEstadoDTO

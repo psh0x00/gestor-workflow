@@ -1,4 +1,3 @@
-
 using GestorWorkflow.Core.DTO;
 using GestorWorkflow.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,23 +7,28 @@ using Microsoft.EntityFrameworkCore;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
 
-
 namespace GestorWorkflow.API.Controllers
 {
-    using GestorWorkflow.Core.DTO;
-    using GestorWorkflow.Core.Interfaces;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Authorization;
-    using System.Text.Json;
-    using Microsoft.EntityFrameworkCore;
-    using GestorWorkflow.Data.Context;
-    using GestorWorkflow.Data.Models;
-
     [ApiController]
     [Route("api/workflow-instancias")]
     [Authorize]
     public class WorkflowInstanciaController : ControllerBase
     {
+
+
+        // PUT: api/workflow-instancias/{id}/estados-concluidos
+        [HttpPut("{id}/estados-concluidos")]
+        public async Task<IActionResult> AtualizarEstadosConcluidos(int id, [FromBody] AtualizarEstadosConcluidosDTO dto)
+        {
+            var db = HttpContext.RequestServices.GetService(typeof(GestorWorkflowDbContext)) as GestorWorkflowDbContext;
+            if (db == null) return StatusCode(500, "DbContext não encontrado");
+            var instancia = await db.WorkflowInstancias.FirstOrDefaultAsync(w => w.WorkflowInstanciaId == id);
+            if (instancia == null)
+                return NotFound();
+            instancia.EstadosConcluidosJson = JsonSerializer.Serialize(dto.EstadosConcluidos ?? new List<int>());
+            await db.SaveChangesAsync();
+            return Ok();
+        }
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<WorkflowInstanciaController> _logger;
 
@@ -84,7 +88,63 @@ namespace GestorWorkflow.API.Controllers
                 }
             }
             return Ok(instanciados);
+        }
 
+        // GET: api/workflow-instancias/{id}
+        [HttpGet("{id}")]
+        public async Task<ActionResult<WorkflowInstanciaDTO>> ObterPorId(int id)
+        {
+            var db = HttpContext.RequestServices.GetService(typeof(GestorWorkflowDbContext)) as GestorWorkflowDbContext;
+            if (db == null) return StatusCode(500, "DbContext não encontrado");
+
+            var instancia = await db.WorkflowInstancias
+                .Include(w => w.WorkflowModelo)
+                .Include(w => w.EstadoAtual)
+                .Include(w => w.IniciadoPor)
+                .FirstOrDefaultAsync(w => w.WorkflowInstanciaId == id);
+
+            if (instancia == null)
+                return NotFound();
+
+            var estadosConcluidos = new List<int>();
+            if (!string.IsNullOrEmpty(instancia.EstadosConcluidosJson))
+            {
+                try
+                {
+                    estadosConcluidos = System.Text.Json.JsonSerializer.Deserialize<List<int>>(instancia.EstadosConcluidosJson) ?? new List<int>();
+                }
+                catch { }
+            }
+
+            var dto = new WorkflowInstanciaDTO
+            {
+                Id = instancia.WorkflowInstanciaId,
+                WorkflowModeloId = instancia.WorkflowModeloId,
+                Status = instancia.StatusWorkflowEntity,
+                EstadoAtualId = instancia.EstadoAtualId,
+                DataInicio = instancia.DataInicio,
+                DataFim = instancia.DataFim,
+                IniciadoPorId = instancia.IniciadoPorUtilizadorId,
+                NomeWorkflowModelo = instancia.WorkflowModelo?.Nome,
+                NomeEstadoAtual = instancia.EstadoAtual?.Nome,
+                NomeIniciador = instancia.IniciadoPor?.Nome,
+                EstadosConcluidos = estadosConcluidos
+            };
+
+            return Ok(dto);
+        }
+        // ...outros métodos...
+
+        // DTO for updating completed states
+        public class AtualizarEstadosConcluidosDTO
+        {
+            public List<int> EstadosConcluidos { get; set; }
+        }
+
+        public class ConfirmarParticipacaoDTO
+
+        {
+            public bool Aceitar { get; set; }
         }
 
     // POST: api/workflow-instancias
@@ -213,13 +273,5 @@ namespace GestorWorkflow.API.Controllers
         await db.SaveChangesAsync();
         return Ok();
     }
-
-    public class ConfirmarParticipacaoDTO
-    {
-        public bool Aceitar { get; set; }
     }
-
-} // fecha WorkflowInstanciaController
-
-} // fecha namespace
-
+}

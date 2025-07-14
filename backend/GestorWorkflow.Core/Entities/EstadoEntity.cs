@@ -12,7 +12,22 @@ public class EstadoEntity
     public bool Ativo { get; private set; }
     public DateTime DataCriacao { get; private set; }
     public int? CriadoPorId { get; private set; }
+
     public List<string> Funcoes { get; private set; } = new();
+
+    // Adiciona propriedades explícitas para condições
+    public string? PreCondicao { get; private set; }
+    public string? PosCondicao { get; private set; }
+
+    public void DefinirPreCondicao(string? preCondicao)
+    {
+        PreCondicao = preCondicao;
+    }
+
+    public void DefinirPosCondicao(string? posCondicao)
+    {
+        PosCondicao = posCondicao;
+    }
 
     public EstadoEntity(int id, string nome, TipoEstadoEntity tipo, int? criadoPorId = null)
     {

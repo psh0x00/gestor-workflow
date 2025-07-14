@@ -2,6 +2,9 @@ namespace GestorWorkflow.Core.DTO;
 
 public class WorkflowModeloDTO
 {
+    // Propriedades para última pré e pós-condição do modelo
+    public string? UltimaPreCondicao { get; set; }
+    public string? UltimaPosCondicao { get; set; }
     public int Id { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string? Descricao { get; set; }

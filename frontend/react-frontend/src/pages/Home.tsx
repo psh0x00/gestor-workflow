@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import WorkflowModeloModal from '../components/WorkflowModeloModal';
 import WorkflowModeloViewModal from '../components/WorkflowModeloViewModal';
+import Modal from '../components/Modal';
+import WorkflowPreviewZoom from '../components/WorkflowPreviewZoom';
+import { atualizarEstadosConcluidos, obterWorkflowInstanciaPorId } from '../services/workflowInstanciaService';
+import { useRef } from 'react';
 import './Home.css';
 import { listarWorkflowModelos, obterWorkflowModeloPorId } from '../services/workflowModeloService';
 import { listarPendentes, listarInstanciados, confirmarParticipacao } from '../services/workflowInstanciaService';
 import { useAuth } from '../context/AuthContext';
 
 const Home: React.FC = () => {
+  const [instanciaModalOpen, setInstanciaModalOpen] = useState(false);
+  const [modeloPreview, setModeloPreview] = useState<any | null>(null);
+  const [loadingModeloPreview, setLoadingModeloPreview] = useState(false);
+  const workflowZoomRef = useRef<any>(null);
   const { logout, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'todos' | 'meus' | 'pendentes' | 'instanciados'>('todos');
   const [search, setSearch] = useState('');
@@ -14,10 +22,10 @@ const Home: React.FC = () => {
   const [modelos, setModelos] = useState<any[]>([]);
   const [pendentes, setPendentes] = useState<any[]>([]);
   const [instanciados, setInstanciados] = useState<any[]>([]);
-  const [loadingModelos, setLoadingModelos] = useState(true);
+  // const [loadingModelos, setLoadingModelos] = useState(true);
   const [loadingPendentes, setLoadingPendentes] = useState(false);
   const [loadingInstanciados, setLoadingInstanciados] = useState(false);
-  const [erroModelos, setErroModelos] = useState<string | null>(null);
+  // const [erroModelos, setErroModelos] = useState<string | null>(null);
   const [erroPendentes, setErroPendentes] = useState<string | null>(null);
   const [erroInstanciados, setErroInstanciados] = useState<string | null>(null);
   const [workflowModalOpen, setWorkflowModalOpen] = useState(false);
@@ -26,16 +34,12 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     async function fetchModelos() {
-      setLoadingModelos(true);
-      setErroModelos(null);
       try {
         const token = localStorage.getItem('token');
         const res = await listarWorkflowModelos(token ?? undefined);
         setModelos(res.data);
       } catch (err: any) {
-        setErroModelos('Erro ao carregar modelos.');
-      } finally {
-        setLoadingModelos(false);
+        // Erro ao carregar modelos
       }
     }
     fetchModelos();
@@ -247,7 +251,25 @@ const Home: React.FC = () => {
                     <div
                       key={i.id}
                       className="modelo-card ativo"
-                      style={{ cursor: 'default' }}
+                      style={{ cursor: 'pointer' }}
+                    onClick={async () => {
+                      setInstanciaModalOpen(true);
+                      setLoadingModeloPreview(true);
+                      setModeloPreview(null);
+                      try {
+                        const token = localStorage.getItem('token');
+                        // Busca modelo e instância em paralelo (igual ao botão Salvar)
+                        const [instanciaRes, modeloRes] = await Promise.all([
+                          obterWorkflowInstanciaPorId(i.id, token ?? undefined),
+                          obterWorkflowModeloPorId(i.workflowModeloId, token ?? undefined)
+                        ]);
+                        setModeloPreview({ ...modeloRes.data, ...instanciaRes.data, instanciaId: i.id });
+                      } catch {
+                        setModeloPreview(null);
+                      } finally {
+                        setLoadingModeloPreview(false);
+                      }
+                    }}
                     >
                       <div className="modelo-card-header">
                         <span className="modelo-nome">{i.nomeWorkflowModelo || 'Workflow'}</span>
@@ -260,6 +282,62 @@ const Home: React.FC = () => {
                       </div>
                     </div>
                   ))}
+      <Modal isOpen={instanciaModalOpen} onClose={() => { setInstanciaModalOpen(false); setModeloPreview(null); }}>
+        <div style={{ minWidth: 340, maxWidth: 900, padding: 0 }}>
+          {loadingModeloPreview ? (
+            <div style={{ padding: 32, textAlign: 'center' }}>A carregar modelo...</div>
+          ) : modeloPreview ? (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0 12px 0' }}>
+                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>{modeloPreview.nome || 'Workflow'}</h2>
+                </div>
+                <div className="modal-body" style={{ padding: 0, minHeight: 400, position: 'relative', marginBottom: 0 }}>
+                  <WorkflowPreviewZoom ref={workflowZoomRef} modelo={modeloPreview} />
+                  <button
+                    style={{
+                      minWidth: 110,
+                      background: 'linear-gradient(90deg, #06d6df 0%, #3b82f6 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 16,
+                      fontWeight: 600,
+                      fontSize: 18,
+                      padding: '10px 32px',
+                      boxShadow: '0 2px 8px #0002',
+                      transition: 'filter 0.2s',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onClick={async () => {
+                      if (workflowZoomRef.current && modeloPreview && modeloPreview.instanciaId) {
+                        const estadosConcluidos = workflowZoomRef.current.getEstadosConcluidos();
+                        const token = localStorage.getItem('token');
+                        try {
+                          await atualizarEstadosConcluidos(modeloPreview.instanciaId, estadosConcluidos, token ?? undefined);
+                          // Buscar novamente a instância após salvar
+                          const instanciaId = modeloPreview.instanciaId;
+                          const [instanciaRes, modeloRes] = await Promise.all([
+                            obterWorkflowInstanciaPorId(instanciaId, token ?? undefined),
+                            obterWorkflowModeloPorId(modeloPreview.workflowModeloId || modeloPreview.id, token ?? undefined)
+                          ]);
+                          // Combina os dados do modelo e da instância
+                          setModeloPreview({ ...modeloRes.data, ...instanciaRes.data, instanciaId });
+                          alert('Estados concluídos salvos com sucesso!');
+                        } catch (err) {
+                          alert('Erro ao salvar estados concluídos.');
+                        }
+                      }
+                    }}
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Modal>
                 </div>
               )}
             </div>
