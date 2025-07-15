@@ -45,16 +45,19 @@ const Home: React.FC = () => {
     fetchModelos();
   }, []);
 
+  // Carrega pendentes ao montar (login)
   useEffect(() => {
-    if (activeTab === 'pendentes') {
-      setLoadingPendentes(true);
-      setErroPendentes(null);
-      const token = localStorage.getItem('token');
-      listarPendentes(token ?? undefined)
-        .then(res => setPendentes(res.data))
-        .catch(() => setErroPendentes('Erro ao carregar pendentes.'))
-        .finally(() => setLoadingPendentes(false));
-    } else if (activeTab === 'instanciados') {
+    setLoadingPendentes(true);
+    setErroPendentes(null);
+    const token = localStorage.getItem('token');
+    listarPendentes(token ?? undefined)
+      .then(res => setPendentes(res.data))
+      .catch(() => setErroPendentes('Erro ao carregar pendentes.'))
+      .finally(() => setLoadingPendentes(false));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'instanciados') {
       setLoadingInstanciados(true);
       setErroInstanciados(null);
       const token = localStorage.getItem('token');
@@ -150,7 +153,28 @@ const Home: React.FC = () => {
           <button className={activeTab === 'todos' ? 'active' : ''} onClick={() => setActiveTab('todos')}>Todos os Modelos</button>
           <button className={activeTab === 'meus' ? 'active' : ''} onClick={() => setActiveTab('meus')}>Meus Modelos</button>
           <button className={activeTab === 'instanciados' ? 'active' : ''} onClick={() => setActiveTab('instanciados')}>Instanciados</button>
-          <button className={activeTab === 'pendentes' ? 'active' : ''} onClick={() => setActiveTab('pendentes')}>Pendentes</button>
+          <button className={activeTab === 'pendentes' ? 'active' : ''} onClick={() => setActiveTab('pendentes')} style={{ position: 'relative' }}>
+            Pendentes
+            {pendentes.length > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: -6,
+                right: -10,
+                background: '#ef4444',
+                color: '#fff',
+                borderRadius: '50%',
+                padding: '2px 7px',
+                fontSize: 13,
+                fontWeight: 600,
+                minWidth: 22,
+                textAlign: 'center',
+                boxShadow: '0 1px 4px #0002',
+                zIndex: 1
+              }}>
+                {pendentes.length}
+              </span>
+            )}
+          </button>
         </div>
         {activeTab === 'pendentes' ? (
           <div className="filtros-bar">
@@ -319,6 +343,57 @@ const Home: React.FC = () => {
                   <WorkflowPreviewZoom
                     ref={workflowZoomRef}
                     modelo={modeloPreview}
+                    funcaoUsuario={(() => {
+                      // Extrai a função do utilizador autenticado da equipa da instância
+                      const token = localStorage.getItem('token');
+                      let userId: string | null = null;
+                      if (token) {
+                        try {
+                          const payload = JSON.parse(atob(token.split('.')[1]));
+                          userId = payload['nameid'] || payload['sub'] || payload['userId'] || payload['userid'] || null;
+                        } catch {}
+                      }
+                      let funcao = null;
+                      // LOG de debug para equipa
+                      console.log('[DEBUG] equipa:', modeloPreview?.equipa, '| equipaJson:', modeloPreview?.equipaJson, '| userId extraído:', userId, '| typeof userId:', typeof userId);
+                      if (modeloPreview && Array.isArray(modeloPreview.equipa)) {
+                        for (const membro of modeloPreview.equipa) {
+                          console.log('[DEBUG] membro equipa:', membro, '| utilizadorId:', membro?.utilizadorId, '| typeof:', typeof membro?.utilizadorId);
+                          if (
+                            membro &&
+                            (String(membro.utilizadorId) === String(userId) || Number(membro.utilizadorId) === Number(userId))
+                          ) {
+                            funcao = membro.funcao;
+                            console.log('[DEBUG] MATCH encontrado:', membro);
+                            break;
+                          }
+                        }
+                      } else if (modeloPreview && typeof modeloPreview.equipaJson === 'string') {
+                        try {
+                          const equipaArr = JSON.parse(modeloPreview.equipaJson);
+                          if (Array.isArray(equipaArr)) {
+                            for (const membro of equipaArr) {
+                              console.log('[DEBUG] membro equipaJson:', membro, '| utilizadorId:', membro?.utilizadorId, '| typeof:', typeof membro?.utilizadorId);
+                              if (
+                                membro &&
+                                (String(membro.utilizadorId) === String(userId) || Number(membro.utilizadorId) === Number(userId))
+                              ) {
+                                funcao = membro.funcao;
+                                console.log('[DEBUG] MATCH encontrado (Json):', membro);
+                                break;
+                              }
+                            }
+                          } else {
+                            console.log('[DEBUG] equipaJson não é array:', equipaArr);
+                          }
+                        } catch (err) {
+                          console.log('[DEBUG] Erro ao fazer parse de equipaJson:', err);
+                        }
+                      }
+                      // LOG de debug para função encontrada
+                      console.log('[DEBUG] funcaoUsuario encontrada:', funcao);
+                      return funcao;
+                    })()}
                     onSalvar={async (estadosConcluidos: Array<number|string>) => {
                       if (!modeloPreview || !modeloPreview.instanciaId) return;
                       const token = localStorage.getItem('token');

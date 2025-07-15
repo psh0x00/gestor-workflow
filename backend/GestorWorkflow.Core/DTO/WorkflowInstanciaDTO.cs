@@ -1,4 +1,5 @@
 using GestorWorkflow.Core.Enums;
+using GestorWorkflow.Core.Enums;
 
 namespace GestorWorkflow.Core.DTO;
 
@@ -23,6 +24,9 @@ public class WorkflowInstanciaDTO
     public string? NomeEstadoAtual { get; set; }
     public string? NomeIniciador { get; set; }
     public string StatusDescricao => Status.ToString();
+
+    public List<EquipaAtribuicaoDTO>? Equipa { get; set; }
+    public string? EquipaJson { get; set; }
 }
 
 public class CriarWorkflowInstanciaDTO

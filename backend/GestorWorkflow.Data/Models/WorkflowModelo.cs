@@ -8,6 +8,7 @@ namespace GestorWorkflow.Data.Models
     [Table("WorkflowModelo")]
     public class WorkflowModelo
     {
+        public virtual ICollection<EstadoModelo> Estados { get; set; } = new List<EstadoModelo>();
         [Key]
         [Column("id_workflow_modelo")]
         public int WorkflowModeloId { get; set; }

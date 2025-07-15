@@ -19,6 +19,18 @@ public class EstadoEntity
     public string? PreCondicao { get; private set; }
     public string? PosCondicao { get; private set; }
 
+    /// <summary>
+    /// Verifica se a função do utilizador está autorizada a concluir este estado.
+    /// </summary>
+    /// <param name="funcaoUsuario">Função do utilizador</param>
+    /// <returns>True se permitido, false caso contrário</returns>
+    public bool PermiteConclusaoPorFuncao(string funcaoUsuario)
+    {
+        if (Funcoes == null || Funcoes.Count == 0)
+            return true; // Se não houver restrição, qualquer função pode concluir
+        return Funcoes.Contains(funcaoUsuario);
+    }
+
     public void DefinirPreCondicao(string? preCondicao)
     {
         PreCondicao = preCondicao;

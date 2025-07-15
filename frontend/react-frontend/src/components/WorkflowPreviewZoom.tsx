@@ -23,6 +23,7 @@ interface WorkflowPreviewZoomProps {
   modelo: WorkflowModelo;
   onSalvar?: (estadosConcluidos: Array<number|string>) => void;
   onConcluir?: () => void;
+  funcaoUsuario?: string | null;
   children?: React.ReactNode; // Para receber o botão Salvar do pai
 }
 
@@ -37,7 +38,7 @@ const buttonStyle: React.CSSProperties = {
   boxShadow: '0 1px 4px #0001',
 };
 
-const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir, children }: WorkflowPreviewZoomProps, ref: React.Ref<any>) => {
+const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir, funcaoUsuario, children }: WorkflowPreviewZoomProps, ref: React.Ref<any>) => {
   const [estadoSelecionado, setEstadoSelecionado] = useState<any | null>(null);
   type CondicaoTransicao = { nome: string; origem?: string; destino?: string };
   const [condicoesEstado, setCondicoesEstado] = useState<{ pre: CondicaoTransicao[]; pos: CondicaoTransicao[] }>({ pre: [], pos: [] });
@@ -268,9 +269,14 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir, children }: Wo
                         const estados = modelo.estados || [];
                         const idx = estados.findIndex(e => (((e as any).id ?? e.nome) === (estadoSelecionado.id ?? estadoSelecionado.nome)));
                         if (idx === 0) {
+                          // Verifica permissão da função do usuário
+                          const funcoesPermitidas = Array.isArray(estadoSelecionado.funcoes) ? estadoSelecionado.funcoes : [];
+                          const podeConcluir = !funcoesPermitidas.length || (funcaoUsuario && funcoesPermitidas.includes(funcaoUsuario));
+                          // DEBUG LOG
+                          console.log('[DEBUG] Estado:', estadoSelecionado.nome, '| Funções permitidas:', funcoesPermitidas, '| Função do usuário:', funcaoUsuario, '| Pode concluir:', podeConcluir);
                           return (
                             <>
-                              {!estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) && (
+                              {!estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) && podeConcluir && (
                                 <button
                                   onClick={() => marcarConcluido(estadoSelecionado)}
                                   style={{
@@ -320,9 +326,14 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir, children }: Wo
                         if (!anterior) return null;
                         const anteriorConcluido = estadosConcluidos.includes((anterior as any).id ?? anterior.nome);
                         if (!anteriorConcluido) return null;
+                        // Para outros estados, só mostrar se o anterior estiver concluído
+                        const funcoesPermitidas = Array.isArray(estadoSelecionado.funcoes) ? estadoSelecionado.funcoes : [];
+                        const podeConcluir = !funcoesPermitidas.length || (funcaoUsuario && funcoesPermitidas.includes(funcaoUsuario));
+                        // DEBUG LOG
+                        console.log('[DEBUG] Estado:', estadoSelecionado.nome, '| Funções permitidas:', funcoesPermitidas, '| Função do usuário:', funcaoUsuario, '| Pode concluir:', podeConcluir);
                         return (
                           <>
-                            {!estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) && (
+                            {!estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) && podeConcluir && (
                               <button
                                 onClick={() => marcarConcluido(estadoSelecionado)}
                                 style={{

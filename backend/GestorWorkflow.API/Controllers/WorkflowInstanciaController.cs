@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using GestorWorkflow.Data.Context;
 using GestorWorkflow.Data.Models;
+using System.Linq;
 
 namespace GestorWorkflow.API.Controllers
 {
@@ -38,9 +39,74 @@ namespace GestorWorkflow.API.Controllers
         {
             var db = HttpContext.RequestServices.GetService(typeof(GestorWorkflowDbContext)) as GestorWorkflowDbContext;
             if (db == null) return StatusCode(500, "DbContext não encontrado");
-            var instancia = await db.WorkflowInstancias.FirstOrDefaultAsync(w => w.WorkflowInstanciaId == id);
+            var instancia = await db.WorkflowInstancias.Include(w => w.WorkflowModelo).FirstOrDefaultAsync(w => w.WorkflowInstanciaId == id);
             if (instancia == null)
                 return NotFound();
+
+            // Obter utilizador autenticado
+            var userIdClaim = User.Claims.FirstOrDefault(c =>
+                c.Type == "sub" ||
+                c.Type == "userId" ||
+                c.Type == "id" ||
+                c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+            );
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                return Unauthorized("Utilizador não autenticado ou sem claim de ID.");
+
+            // Obter equipa e função do utilizador na instância
+            string? equipaJson = instancia.EquipaJson;
+            string? funcoesEstado = null;
+            string? funcaoUsuario = null;
+            if (!string.IsNullOrEmpty(equipaJson))
+            {
+                try
+                {
+                    var equipa = JsonSerializer.Deserialize<List<GestorWorkflow.Core.DTO.EquipaAtribuicaoDTO>>(equipaJson);
+                    funcaoUsuario = equipa?.FirstOrDefault(e => e.UtilizadorId == userId)?.Funcao;
+                }
+                catch { }
+            }
+
+            // Carregar estados do modelo
+            var estadosModelo = new List<GestorWorkflow.Data.Models.EstadoModelo>();
+            if (instancia.WorkflowModelo != null && db.Entry(instancia.WorkflowModelo).Collection("Estados").IsLoaded == false)
+            {
+                await db.Entry(instancia.WorkflowModelo).Collection("Estados").LoadAsync();
+            }
+            if (instancia.WorkflowModelo != null)
+            {
+                var estadosEnumerable = db.Entry(instancia.WorkflowModelo).Collection("Estados").CurrentValue;
+                estadosModelo = estadosEnumerable != null ? estadosEnumerable.Cast<GestorWorkflow.Data.Models.EstadoModelo>().ToList() : new List<GestorWorkflow.Data.Models.EstadoModelo>();
+            }
+
+            // Estados já concluídos antes da operação
+            var estadosAntes = new List<int>();
+            if (!string.IsNullOrEmpty(instancia.EstadosConcluidosJson))
+            {
+                try { estadosAntes = JsonSerializer.Deserialize<List<int>>(instancia.EstadosConcluidosJson) ?? new List<int>(); } catch { }
+            }
+            var estadosNovos = (dto.EstadosConcluidos ?? new List<int>()).Except(estadosAntes).ToList();
+
+            // Para cada estado novo, validar permissão
+            foreach (var estadoId in estadosNovos)
+            {
+                var estadoModelo = estadosModelo.FirstOrDefault(e => e.EstadoModeloId == estadoId);
+                if (estadoModelo != null)
+                {
+                    // Funções permitidas para o estado (JSON string)
+                    List<string> funcoesPermitidas = new();
+                    if (!string.IsNullOrEmpty(estadoModelo.Funcoes))
+                    {
+                        try { funcoesPermitidas = JsonSerializer.Deserialize<List<string>>(estadoModelo.Funcoes) ?? new List<string>(); } catch { }
+                    }
+                    // Se houver restrição e a função do utilizador não está permitida, negar
+                    if (funcoesPermitidas.Count > 0 && (string.IsNullOrEmpty(funcaoUsuario) || !funcoesPermitidas.Contains(funcaoUsuario)))
+                    {
+                        return Forbid($"Utilizador não tem permissão para concluir o estado '{estadoModelo.Nome}'");
+                    }
+                }
+            }
+
             instancia.EstadosConcluidosJson = JsonSerializer.Serialize(dto.EstadosConcluidos ?? new List<int>());
             await db.SaveChangesAsync();
             return Ok();
@@ -151,7 +217,9 @@ namespace GestorWorkflow.API.Controllers
                 NomeWorkflowModelo = instancia.WorkflowModelo?.Nome,
                 NomeEstadoAtual = instancia.EstadoAtual?.Nome,
                 NomeIniciador = instancia.IniciadoPor?.Nome,
-                EstadosConcluidos = estadosConcluidos
+                EstadosConcluidos = estadosConcluidos,
+                Equipa = !string.IsNullOrEmpty(instancia.EquipaJson) ? JsonSerializer.Deserialize<List<EquipaAtribuicaoDTO>>(instancia.EquipaJson) : null,
+                EquipaJson = instancia.EquipaJson
             };
 
             return Ok(dto);
@@ -291,10 +359,18 @@ namespace GestorWorkflow.API.Controllers
         var membro = equipa.FirstOrDefault(e => e.UtilizadorId == userId);
         if (membro == null)
             return Forbid();
-        membro.Confirmado = dto.Aceitar;
+
+        if (!dto.Aceitar)
+        {
+            db.WorkflowInstancias.Remove(instancia);
+            await db.SaveChangesAsync();
+            return Ok(new { removido = true });
+        }
+
+        membro.Confirmado = true;
         instancia.EquipaJson = JsonSerializer.Serialize(equipa);
         await db.SaveChangesAsync();
-        return Ok();
+        return Ok(new { removido = false });
     }
     }
 }
