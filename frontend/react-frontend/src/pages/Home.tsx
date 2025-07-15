@@ -58,12 +58,15 @@ const Home: React.FC = () => {
       setLoadingInstanciados(true);
       setErroInstanciados(null);
       const token = localStorage.getItem('token');
-      listarInstanciados(token ?? undefined)
+      let statusId: number | undefined = undefined;
+      if (filtros.statusInstanciado === 'aberto') statusId = 1;
+      else if (filtros.statusInstanciado === 'terminado') statusId = 2;
+      listarInstanciados(token ?? undefined, statusId)
         .then(res => setInstanciados(res.data))
         .catch(() => setErroInstanciados('Erro ao carregar instanciados.'))
         .finally(() => setLoadingInstanciados(false));
     }
-  }, [activeTab]);
+  }, [activeTab, filtros.statusInstanciado]);
 
   const handleNovoModelo = (data: any) => {
     // Aqui podes fazer a chamada à API ou atualizar o estado local
@@ -233,8 +236,9 @@ const Home: React.FC = () => {
               ) : erroInstanciados ? (
                 <p style={{ color: 'red', textAlign: 'center' }}>{erroInstanciados}</p>
               ) : instanciados.filter(i => {
-                  if (filtros.statusInstanciado === 'aberto') return i.status === 1 || i.status === 'Aberto';
-                  if (filtros.statusInstanciado === 'terminado') return i.status === 2 || i.status === 'Terminado';
+                  // Filtro por status_id (1=Ativo, 2=Concluido, 3=Suspenso, 4=Cancelado)
+                  if (filtros.statusInstanciado === 'aberto') return i.status === 1;
+                  if (filtros.statusInstanciado === 'terminado') return i.status === 2;
                   return true;
                 }).length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '220px', width: '100%', textAlign: 'center', color: '#888' }}>
@@ -244,45 +248,64 @@ const Home: React.FC = () => {
               ) : (
                 <div className="modelos-cards">
                   {instanciados.filter(i => {
-                    if (filtros.statusInstanciado === 'aberto') return i.status === 1 || i.status === 'Aberto';
-                    if (filtros.statusInstanciado === 'terminado') return i.status === 2 || i.status === 'Terminado';
+                    if (filtros.statusInstanciado === 'aberto') return i.status === 1;
+                    if (filtros.statusInstanciado === 'terminado') return i.status === 2;
                     return true;
                   }).map(i => (
                     <div
                       key={i.id}
                       className="modelo-card ativo"
-                      style={{ cursor: 'pointer' }}
-                    onClick={async () => {
-                      setInstanciaModalOpen(true);
-                      setLoadingModeloPreview(true);
-                      setModeloPreview(null);
-                      try {
-                        const token = localStorage.getItem('token');
-                        // Busca modelo e instância em paralelo (igual ao botão Salvar)
-                        const [instanciaRes, modeloRes] = await Promise.all([
-                          obterWorkflowInstanciaPorId(i.id, token ?? undefined),
-                          obterWorkflowModeloPorId(i.workflowModeloId, token ?? undefined)
-                        ]);
-                        setModeloPreview({ ...modeloRes.data, ...instanciaRes.data, instanciaId: i.id });
-                      } catch {
+                      style={{ cursor: i.status === 2 ? 'default' : 'pointer', opacity: i.status === 2 ? 0.7 : 1 }}
+                      onClick={i.status === 2 ? undefined : async () => {
+                        setInstanciaModalOpen(true);
+                        setLoadingModeloPreview(true);
                         setModeloPreview(null);
-                      } finally {
-                        setLoadingModeloPreview(false);
-                      }
-                    }}
+                        try {
+                          const token = localStorage.getItem('token');
+                          // Busca modelo e instância em paralelo (igual ao botão Salvar)
+                          const [instanciaRes, modeloRes] = await Promise.all([
+                            obterWorkflowInstanciaPorId(i.id, token ?? undefined),
+                            obterWorkflowModeloPorId(i.workflowModeloId, token ?? undefined)
+                          ]);
+                          setModeloPreview({ ...modeloRes.data, ...instanciaRes.data, instanciaId: i.id });
+                        } catch {
+                          setModeloPreview(null);
+                        } finally {
+                          setLoadingModeloPreview(false);
+                        }
+                      }}
                     >
                       <div className="modelo-card-header">
                         <span className="modelo-nome">{i.nomeWorkflowModelo || 'Workflow'}</span>
                         <span className="status ativo">Instanciado</span>
                       </div>
                       <div style={{ marginTop: 8, fontSize: 15 }}>
-                        Estado: <b>{i.nomeEstadoAtual || '-'}</b><br />
-                        Iniciado por: <b>{i.nomeIniciador || '-'}</b><br />
-                        Data de início: <b>{i.dataInicio ? new Date(i.dataInicio).toLocaleString() : '-'}</b>
+                        <b>Data de início:</b> {i.dataInicio ? new Date(i.dataInicio).toLocaleString() : '-'}<br />
+                        <b>Data de fim:</b> {i.dataFim ? new Date(i.dataFim).toLocaleString() : '-'}
                       </div>
                     </div>
                   ))}
-      <Modal isOpen={instanciaModalOpen} onClose={() => { setInstanciaModalOpen(false); setModeloPreview(null); }}>
+      <Modal isOpen={instanciaModalOpen} onClose={async () => {
+        setInstanciaModalOpen(false);
+        setModeloPreview(null);
+        // Atualiza a lista de instanciados ao fechar o modal
+        if (activeTab === 'instanciados') {
+          setLoadingInstanciados(true);
+          setErroInstanciados(null);
+          const token = localStorage.getItem('token');
+          let statusId: number | undefined = undefined;
+          if (filtros.statusInstanciado === 'aberto') statusId = 1;
+          else if (filtros.statusInstanciado === 'terminado') statusId = 2;
+          try {
+            const res = await listarInstanciados(token ?? undefined, statusId);
+            setInstanciados(res.data);
+          } catch {
+            setErroInstanciados('Erro ao carregar instanciados.');
+          } finally {
+            setLoadingInstanciados(false);
+          }
+        }
+      }}>
         <div style={{ minWidth: 340, maxWidth: 900, padding: 0 }}>
           {loadingModeloPreview ? (
             <div style={{ padding: 32, textAlign: 'center' }}>A carregar modelo...</div>
@@ -293,7 +316,51 @@ const Home: React.FC = () => {
                   <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>{modeloPreview.nome || 'Workflow'}</h2>
                 </div>
                 <div className="modal-body" style={{ padding: 0, minHeight: 400, position: 'relative', marginBottom: 0 }}>
-                  <WorkflowPreviewZoom ref={workflowZoomRef} modelo={modeloPreview} />
+                  <WorkflowPreviewZoom
+                    ref={workflowZoomRef}
+                    modelo={modeloPreview}
+                    onSalvar={async (estadosConcluidos: Array<number|string>) => {
+                      if (!modeloPreview || !modeloPreview.instanciaId) return;
+                      const token = localStorage.getItem('token');
+                      try {
+                        // Salva os estados concluídos normalmente
+                        await atualizarEstadosConcluidos(modeloPreview.instanciaId, estadosConcluidos, token ?? undefined);
+                        // Verifica se todos os estados do modelo estão concluídos
+                        const estadosModelo = Array.isArray(modeloPreview.estados) ? modeloPreview.estados : [];
+                        const todosConcluidos = estadosModelo.length > 0 && estadosModelo.every((e: any) => estadosConcluidos.includes(e.id ?? e.nome));
+                        if (todosConcluidos) {
+                          // Chama o endpoint para terminar a instância
+                          await fetch(`/api/workflow-instancias/${modeloPreview.instanciaId}/concluir`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            }
+                          });
+                        }
+                        // Buscar novamente a instância após salvar
+                        const instanciaId = modeloPreview.instanciaId;
+                        const [instanciaRes, modeloRes] = await Promise.all([
+                          obterWorkflowInstanciaPorId(instanciaId, token ?? undefined),
+                          obterWorkflowModeloPorId(modeloPreview.workflowModeloId || modeloPreview.id, token ?? undefined)
+                        ]);
+                        setModeloPreview({ ...modeloRes.data, ...instanciaRes.data, instanciaId });
+                        setLoadingInstanciados(true);
+                        setErroInstanciados(null);
+                        try {
+                          const res = await listarInstanciados(token ?? undefined);
+                          setInstanciados(res.data);
+                        } catch {
+                          setErroInstanciados('Erro ao carregar instanciados.');
+                        } finally {
+                          setLoadingInstanciados(false);
+                        }
+                        setInstanciaModalOpen(false);
+                      } catch (err) {
+                        alert('Erro ao salvar estados concluídos.');
+                      }
+                    }}
+                  />
                   <button
                     style={{
                       minWidth: 110,
@@ -315,15 +382,39 @@ const Home: React.FC = () => {
                         const token = localStorage.getItem('token');
                         try {
                           await atualizarEstadosConcluidos(modeloPreview.instanciaId, estadosConcluidos, token ?? undefined);
+                          // Verifica se todos os estados do modelo estão concluídos
+                          const estadosModelo = Array.isArray(modeloPreview.estados) ? modeloPreview.estados : [];
+                          const todosConcluidos = estadosModelo.length > 0 && estadosModelo.every((e: any) => estadosConcluidos.includes(e.id ?? e.nome));
+                          if (todosConcluidos) {
+                            // Chama o endpoint para terminar a instância
+                            await fetch(`/api/workflow-instancias/${modeloPreview.instanciaId}/concluir`, {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                              }
+                            });
+                          }
                           // Buscar novamente a instância após salvar
                           const instanciaId = modeloPreview.instanciaId;
                           const [instanciaRes, modeloRes] = await Promise.all([
                             obterWorkflowInstanciaPorId(instanciaId, token ?? undefined),
                             obterWorkflowModeloPorId(modeloPreview.workflowModeloId || modeloPreview.id, token ?? undefined)
                           ]);
-                          // Combina os dados do modelo e da instância
+                          // Atualiza o preview do modal
                           setModeloPreview({ ...modeloRes.data, ...instanciaRes.data, instanciaId });
-                          alert('Estados concluídos salvos com sucesso!');
+                          // Busca novamente a lista de instanciados do backend para garantir atualização
+                          setLoadingInstanciados(true);
+                          setErroInstanciados(null);
+                          try {
+                            const res = await listarInstanciados(token ?? undefined);
+                            setInstanciados(res.data);
+                          } catch {
+                            setErroInstanciados('Erro ao carregar instanciados.');
+                          } finally {
+                            setLoadingInstanciados(false);
+                          }
+                          setInstanciaModalOpen(false);
                         } catch (err) {
                           alert('Erro ao salvar estados concluídos.');
                         }

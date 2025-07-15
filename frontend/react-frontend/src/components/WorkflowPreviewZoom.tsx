@@ -23,6 +23,7 @@ interface WorkflowPreviewZoomProps {
   modelo: WorkflowModelo;
   onSalvar?: (estadosConcluidos: Array<number|string>) => void;
   onConcluir?: () => void;
+  children?: React.ReactNode; // Para receber o botão Salvar do pai
 }
 
 const buttonStyle: React.CSSProperties = {
@@ -36,7 +37,7 @@ const buttonStyle: React.CSSProperties = {
   boxShadow: '0 1px 4px #0001',
 };
 
-const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPreviewZoomProps, ref: React.Ref<any>) => {
+const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir, children }: WorkflowPreviewZoomProps, ref: React.Ref<any>) => {
   const [estadoSelecionado, setEstadoSelecionado] = useState<any | null>(null);
   type CondicaoTransicao = { nome: string; origem?: string; destino?: string };
   const [condicoesEstado, setCondicoesEstado] = useState<{ pre: CondicaoTransicao[]; pos: CondicaoTransicao[] }>({ pre: [], pos: [] });
@@ -99,10 +100,6 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
     salvar: () => onSalvar && onSalvar(estadosConcluidos)
   }), [onSalvar, estadosConcluidos]);
 
-  // Verifica se todos os estados do modelo estão concluídos
-  const todosConcluidos = modelo && Array.isArray(modelo.estados) && modelo.estados.length > 0 && modelo.estados.every(
-    (e: any) => estadosConcluidos.includes(e.id ?? e.nome)
-  );
 
   return (
     <div
@@ -114,7 +111,7 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'flex-end', // alinhamento à direita
+        alignItems: 'center', // centralizar botões
         justifyContent: 'center',
         background: 'transparent',
         boxShadow: 'none',
@@ -273,16 +270,7 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
                         if (idx === 0) {
                           return (
                             <>
-                              {estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) ? (
-                              <button
-                                onClick={() => desfazerConcluido(estadoSelecionado)}
-                                style={desfazerButtonStyle}
-                                onMouseOver={e => (e.currentTarget.style.filter = 'brightness(0.97)')}
-                                onMouseOut={e => (e.currentTarget.style.filter = 'none')}
-                              >
-                                Desfazer
-                              </button>
-                              ) : (
+                              {!estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) && (
                                 <button
                                   onClick={() => marcarConcluido(estadoSelecionado)}
                                   style={{
@@ -305,6 +293,25 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
                                   Feito
                                 </button>
                               )}
+                              {(() => {
+                                const idOrNome = estadoSelecionado.id ?? estadoSelecionado.nome;
+                                const salvos = Array.isArray(modelo.estadosConcluidos) ? modelo.estadosConcluidos : [];
+                                const concluidoLocal = estadosConcluidos.includes(idOrNome);
+                                const concluidoSalvo = salvos.includes(idOrNome);
+                                if (concluidoLocal && !concluidoSalvo) {
+                                  return (
+                                    <button
+                                      onClick={() => desfazerConcluido(estadoSelecionado)}
+                                      style={desfazerButtonStyle}
+                                      onMouseOver={e => (e.currentTarget.style.filter = 'brightness(0.97)')}
+                                      onMouseOut={e => (e.currentTarget.style.filter = 'none')}
+                                    >
+                                      Desfazer
+                                    </button>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </>
                           );
                         }
@@ -315,16 +322,7 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
                         if (!anteriorConcluido) return null;
                         return (
                           <>
-                            {estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) ? (
-                              <button
-                                onClick={() => desfazerConcluido(estadoSelecionado)}
-                                style={desfazerButtonStyle}
-                                onMouseOver={e => (e.currentTarget.style.filter = 'brightness(0.97)')}
-                                onMouseOut={e => (e.currentTarget.style.filter = 'none')}
-                              >
-                                Desfazer
-                              </button>
-                            ) : (
+                            {!estadosConcluidos.includes(estadoSelecionado.id ?? estadoSelecionado.nome) && (
                               <button
                                 onClick={() => marcarConcluido(estadoSelecionado)}
                                 style={{
@@ -347,6 +345,25 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
                                 Feito
                               </button>
                             )}
+                            {(() => {
+                              const idOrNome = estadoSelecionado.id ?? estadoSelecionado.nome;
+                              const salvos = Array.isArray(modelo.estadosConcluidos) ? modelo.estadosConcluidos : [];
+                              const concluidoLocal = estadosConcluidos.includes(idOrNome);
+                              const concluidoSalvo = salvos.includes(idOrNome);
+                              if (concluidoLocal && !concluidoSalvo) {
+                                return (
+                                  <button
+                                    onClick={() => desfazerConcluido(estadoSelecionado)}
+                                    style={desfazerButtonStyle}
+                                    onMouseOver={e => (e.currentTarget.style.filter = 'brightness(0.97)')}
+                                    onMouseOut={e => (e.currentTarget.style.filter = 'none')}
+                                  >
+                                    Desfazer
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
                           </>
                         );
                       })()}
@@ -358,30 +375,20 @@ const WorkflowPreviewZoomInner = ({ modelo, onSalvar, onConcluir }: WorkflowPrev
           );
         }}
       </TransformWrapper>
-      {/* Botão Concluir ao centro, apenas se todos concluídos */}
-      {todosConcluidos && (
-        <div style={{ display: 'flex', gap: 16, alignSelf: 'center', marginTop: 24 }}>
-          <button
-            style={{
-              minWidth: 110,
-              background: 'linear-gradient(90deg, #06d6df 0%, #3b82f6 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 16,
-              fontWeight: 600,
-              fontSize: 18,
-              padding: '10px 32px',
-              boxShadow: '0 2px 8px #0002',
-              transition: 'filter 0.2s',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-            onClick={typeof onConcluir === 'function' ? onConcluir : undefined}
-          >
-            Concluir
-          </button>
-        </div>
-      )}
+      {/* Alinhar horizontalmente os botões Salvar (children) e Concluir */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: 16,
+          alignSelf: 'flex-start',
+          marginTop: 24,
+          alignItems: 'center',
+        }}
+      >
+        {children}
+        {/* Botão 'Concluir' removido conforme solicitado */}
+      </div>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+using GestorWorkflow.Core.Enums;
 using GestorWorkflow.Core.DTO;
 using GestorWorkflow.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,21 @@ namespace GestorWorkflow.API.Controllers
     [Authorize]
     public class WorkflowInstanciaController : ControllerBase
     {
+        // POST: api/workflow-instancias/{id}/concluir
+        [HttpPost("{id}/concluir")]
+        public async Task<ActionResult> ConcluirInstancia(int id)
+        {
+            var db = HttpContext.RequestServices.GetService(typeof(GestorWorkflowDbContext)) as GestorWorkflowDbContext;
+            if (db == null) return StatusCode(500, "DbContext não encontrado");
+            var instancia = await db.WorkflowInstancias.FirstOrDefaultAsync(w => w.WorkflowInstanciaId == id);
+            if (instancia == null)
+                return NotFound();
+            // Considera 2 como status 'Terminado'. Ajuste conforme enum/status real.
+            instancia.StatusId = 2;
+            instancia.DataFim = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Ok();
+        }
 
 
         // PUT: api/workflow-instancias/{id}/estados-concluidos
@@ -40,7 +56,7 @@ namespace GestorWorkflow.API.Controllers
 
         // GET: api/workflow-instancias/instanciados
         [HttpGet("instanciados")]
-        public async Task<ActionResult<IEnumerable<WorkflowInstanciaDTO>>> ListarInstanciados()
+        public async Task<ActionResult<IEnumerable<WorkflowInstanciaDTO>>> ListarInstanciados([FromQuery(Name = "status_id")] int? statusId = null)
         {
             // Obter o ID do utilizador autenticado
             var userIdClaim = User.Claims.FirstOrDefault(c =>
@@ -54,11 +70,18 @@ namespace GestorWorkflow.API.Controllers
 
             var db = HttpContext.RequestServices.GetService(typeof(GestorWorkflowDbContext)) as GestorWorkflowDbContext;
             if (db == null) return StatusCode(500, "DbContext não encontrado");
-            var todas = await db.WorkflowInstancias
+            var query = db.WorkflowInstancias
                 .Include(w => w.WorkflowModelo)
                 .Include(w => w.EstadoAtual)
                 .Include(w => w.IniciadoPor)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (statusId.HasValue)
+            {
+                query = query.Where(w => w.StatusId == statusId.Value);
+            }
+
+            var todas = await query.ToListAsync();
             var instanciados = new List<WorkflowInstanciaDTO>();
             foreach (var instancia in todas)
             {

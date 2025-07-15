@@ -42,8 +42,11 @@ export async function confirmarParticipacao(id: number, aceitar: boolean, token?
   });
 }
 
-export async function listarInstanciados(token?: string) {
+export async function listarInstanciados(token?: string, statusId?: number) {
+  const params: any = {};
+  if (statusId !== undefined) params.status_id = statusId;
   return axios.get(`${API_URL}/instanciados`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    params
   });
 }
