@@ -89,6 +89,8 @@
 ### Conditions Management
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET    | `/api/condicoes` | List all conditions |
+| POST   | `/api/condicoes` | Create condition |
 | GET    | `/api/pre-condicoes` | List pre-conditions |
 | POST   | `/api/pre-condicoes` | Create pre-condition |
 | PUT    | `/api/pre-condicoes/{id}` | Update pre-condition |
@@ -104,6 +106,12 @@
 | POST   | `/api/pos-condicoes/{id}/testar` | Test SQL action |
 | POST   | `/api/pos-condicoes/{id}/ativar` | Activate post-condition |
 | POST   | `/api/pos-condicoes/{id}/desativar` | Deactivate post-condition |
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST   | `/api/auth/register` | Register a new user |
+| POST   | `/api/auth/login` | User login |
 
 ## 📊 Reporting Endpoints
 
