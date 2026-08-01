@@ -65,7 +65,7 @@ gestor-workflow/
 
 ## 👥 Equipa
 
-Projeto desenvolvido no âmbito da unidade curricular **Projeto IV** (Engenharia Informática, IPVC), em colaboração com a empresa **Coollink**.
+Projeto desenvolvido no âmbito da unidade curricular **Projeto IV** (Engenharia Informática, IPVC).
 
 ## 📄 Licença
 
