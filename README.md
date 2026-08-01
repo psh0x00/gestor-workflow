@@ -1,72 +1,103 @@
-# 🛠️ Gestor de Workflows
+# 🛠️ Workflow Engine
 
-Ferramenta de visualização e gestão de workflows personalizados, baseada em máquinas de estado, com integração numa aplicação web.
+![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=c-sharp&logoColor=white)
+![.Net](https://img.shields.io/badge/.NET-5C2D91?style=for-the-badge&logo=.net&logoColor=white)
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![SQL Server](https://img.shields.io/badge/SQLServer-CC292B?style=for-the-badge&logo=microsoft-sql-server&logoColor=white)
 
-## 📌 Objetivo
+A visual tool and management engine for custom workflows, built on finite state machines (FSM), integrated into a web application.
 
-Desenvolver um componente para aplicações web que permita a criação, visualização e gestão de workflows dinâmicos, incluindo:
+## 📌 Objective
 
-- Definição de **estados**
-- Definição de **transições** entre estados
-- Controlo de **permissões**
-- Definição de **ações**, **pré-condições** e **pós-condições** associadas a cada estado
+To develop a robust component for web applications that allows the creation, visualization, and management of dynamic workflows, including:
 
-## 🚀 Funcionalidades principais (previstas)
+- Definition of **states**
+- Definition of **transitions** between states
+- Granular **permissions** control
+- Definition of **actions**, **pre-conditions**, and **post-conditions** associated with each state transition
 
-- Editor visual de workflows
-- Sistema de permissões por papel/utilizador
-- Visualização interativa das máquinas de estado
-- Histórico de transições e ações
-- Integração com base de dados SQL Server
-- API RESTful desenvolvida em .NET Core
+## 🚀 Key Features
 
-## 🧱 Estrutura do Projeto
+- Visual workflow editor
+- Role/user-based permission system
+- Interactive visualization of state machines
+- Transition and action history logging
+- Seamless integration with a SQL Server database
+- N-tier RESTful API built with C# .NET Core
+
+## 🧱 Project Structure
 
 ```
 gestor-workflow/
 │
-├── docs/                        # Documentação do projeto
-│   ├── requisitos/              # Especificação de requisitos
-│   └── relatórios/              # Relatório técnico e manual de utilização
+├── docs/                        # Project documentation
+│   ├── requisitos/              # Requirements specification
+│   └── relatórios/              # Technical reports and user manual
 │
-├── backend/                     # API em C# .NET Core
-│   ├── GestorWorkflow.API/     # Projeto principal
-│   ├── GestorWorkflow.Core/    # Lógica de negócio (máquina de estados, permissões, etc.)
-│   └── GestorWorkflow.Data/    # Acesso a dados (SQL Server)
+├── backend/                     # C# .NET Core API
+│   ├── GestorWorkflow.API/     # Main API project
+│   ├── GestorWorkflow.Core/    # Business logic (state machine, permissions, etc.)
+│   └── GestorWorkflow.Data/    # Data access layer (SQL Server)
 │
-├── frontend/                    # Interface Web
-│   ├── react/                   # React
-│   └── shared/                 # Componentes partilhados (ex: visualizador de estados)
+├── frontend/                    # Web Interface
+│   ├── react/                   # React application
+│   └── shared/                 # Shared components (e.g. state visualizer)
 │
-├── tests/                       # Testes automáticos
-│   ├── backend/                # Testes unitários e de integração (API)
-│   └── frontend/               # Testes de UI (ex: Cypress, Jest)
+├── tests/                       # Automated tests
+│   ├── backend/                # Unit and integration tests (API)
+│   └── frontend/               # UI tests (e.g. Cypress, Jest)
 │
-├── .gitignore                   # Ignorar ficheiros desnecessários
-├── README.md                    # Explicação geral do projeto
-└── LICENSE                      # Licença de uso (ex: MIT)
+├── .gitignore                   # Ignore unnecessary files
+├── README.md                    # Project overview (this file)
+└── LICENSE                      # License (e.g. MIT)
 ```
 
-## 🛠️ Tecnologias
+## 🛠️ Technologies
 
 - **Backend**: C# .NET Core
 - **Frontend**: React
-- **Base de Dados**: SQL Server
-- **Outras libs**: DevExtreme, outras a avaliar durante o projeto
+- **Database**: SQL Server
+- **UI Components**: DevExtreme
 
-## 📅 Etapas do Projeto
+## 💻 How to Run (Development)
 
-1. Pesquisa e análise de ferramentas semelhantes
-2. Levantamento e especificação de requisitos
-3. Modelação do componente e estrutura de dados
-4. Implementação e testes do backend e frontend
-5. Integração numa aplicação web
-6. Elaboração de relatório técnico e manual de utilização
+### Backend Setup (.NET Core)
+1. Ensure you have the [.NET SDK](https://dotnet.microsoft.com/download) installed.
+2. Update the SQL Server connection string in `backend/GestorWorkflow.API/appsettings.json`.
+3. Apply database migrations:
+   ```bash
+   cd backend/GestorWorkflow.API
+   dotnet ef database update
+   ```
+4. Run the API:
+   ```bash
+   dotnet run
+   ```
+   The API will typically be available at `https://localhost:5001` or `http://localhost:5000`.
 
-## 👥 Equipa
+### Frontend Setup (React)
+1. Ensure you have [Node.js](https://nodejs.org/) installed.
+2. Install dependencies and start the development server:
+   ```bash
+   cd frontend/react
+   npm install
+   npm start
+   ```
+   The frontend will be available at `http://localhost:3000`.
 
-Projeto desenvolvido no âmbito da unidade curricular **Projeto IV** (Engenharia Informática, IPVC).
+## 📅 Project Stages
 
-## 📄 Licença
+1. Research and analysis of similar tools
+2. Requirements gathering and specification
+3. Component and data structure modeling
+4. Backend and frontend implementation and testing
+5. Web application integration
+6. Technical report and user manual elaboration
 
-Este projeto está licenciado sob a licença [MIT](LICENSE).
+## 👥 Team
+
+Project developed within the scope of the **Project IV** course (Informatics Engineering, IPVC).
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
