@@ -18,12 +18,20 @@ To develop a robust component for web applications that allows the creation, vis
 
 ## 🚀 Key Features
 
+![Visual Workflow Editor UI](docs/images/workflow_editor_preview.png)
+
 - Visual workflow editor
 - Role/user-based permission system
 - Interactive visualization of state machines
 - Transition and action history logging
 - Seamless integration with a SQL Server database
 - N-tier RESTful API built with C# .NET Core
+
+## 🗄️ Database Architecture
+
+The core of the engine relies on a robust relational database schema to manage states, transitions, instances, and role-based access control.
+
+![Database Entity Relationship Diagram](docs/images/database_schema.png)
 
 ## 🧱 Project Structure
 
@@ -84,6 +92,13 @@ gestor-workflow/
    npm start
    ```
    The frontend will be available at `http://localhost:3000`.
+
+### Running Tests
+To run the automated tests for the backend API:
+```bash
+cd tests/backend
+dotnet test
+```
 
 ## 📅 Project Stages
 
